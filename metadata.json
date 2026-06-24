@@ -1,0 +1,6 @@
+{
+  "name": "Presensi Ansor Pro",
+  "description": "Sistem integrasi manajemen kehadiran, analisis evaluasi kelulusan, serta pencetakan sertifikasi kader terpadu GP Ansor Kabupaten Bogor.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
