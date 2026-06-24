@@ -22,6 +22,10 @@ export default function PesertaTab({
   const [sortBy, setSortBy] = useState<'id' | 'nama' | 'utusan' | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
   // Form input states
   const [originalId, setOriginalId] = useState('');
   const [formId, setFormId] = useState('');
@@ -30,6 +34,11 @@ export default function PesertaTab({
   const [formHp, setFormHp] = useState('');
   const [formFoto, setFormFoto] = useState('');
   const [fileName, setFileName] = useState('No file chosen');
+
+  // Reset page when search or sorting changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortBy, sortOrder]);
 
   const handleSort = (field: 'id' | 'nama' | 'utusan') => {
     if (sortBy === field) {
@@ -56,6 +65,13 @@ export default function PesertaTab({
         ? valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
         : valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
     });
+
+  // Calculate pagination slice
+  const totalPages = Math.ceil(sortedAndFilteredPeserta.length / itemsPerPage);
+  const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const startIndex = (activePage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPeserta = sortedAndFilteredPeserta.slice(startIndex, endIndex);
 
   const openAddModal = () => {
     setOriginalId('');
@@ -218,8 +234,8 @@ export default function PesertaTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-navy-850 text-xs text-slate-650 dark:text-slate-350 font-medium">
-              {sortedAndFilteredPeserta.length > 0 ? (
-                sortedAndFilteredPeserta.map(p => (
+              {paginatedPeserta.length > 0 ? (
+                paginatedPeserta.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/10 transition align-middle">
                     <td className="p-4 font-bold text-emerald-500 text-[11px] tracking-wider font-mono">
                       {p.id}
@@ -279,6 +295,61 @@ export default function PesertaTab({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {sortedAndFilteredPeserta.length > 0 && (
+          <div className="px-6 py-4 border-t border-slate-150 dark:border-navy-850 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/20 dark:bg-slate-950/5">
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Menampilkan <span className="text-emerald-600 dark:text-emerald-400">{Math.min(startIndex + 1, sortedAndFilteredPeserta.length)}</span> - <span className="text-emerald-600 dark:text-emerald-400">{Math.min(endIndex, sortedAndFilteredPeserta.length)}</span> dari <span className="text-slate-800 dark:text-white">{sortedAndFilteredPeserta.length}</span> Peserta
+            </div>
+            
+            <div className="flex items-center space-x-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150 select-none cursor-pointer"
+              >
+                Sebelumnya
+              </button>
+              
+              {/* Page Number Buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                const isActive = pageNum === activePage;
+                if (totalPages > 5 && Math.abs(pageNum - activePage) > 1 && pageNum !== 1 && pageNum !== totalPages) {
+                  if (pageNum === 2 || pageNum === totalPages - 1) {
+                    return <span key={pageNum} className="text-slate-400 px-1 font-bold text-xs select-none">...</span>;
+                  }
+                  return null;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7.5 h-7.5 rounded-lg text-[11px] font-black transition duration-150 flex items-center justify-center select-none cursor-pointer ${
+                      isActive 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150 select-none cursor-pointer"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 

@@ -39,6 +39,10 @@ export default function KelulusanTab({
   currentUserName
 }: KelulusanTabProps) {
   const [search, setSearch] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // AI thresholds State
   const [minPres, setMinPres] = useState<number>(75);
@@ -91,10 +95,21 @@ export default function KelulusanTab({
   const countBersyarat = peserta.filter(p => p.status_kelulusan === 'LULUS BERSYARAT').length;
   const countTidakLulus = peserta.filter(p => p.status_kelulusan === 'TIDAK LULUS').length;
 
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filteredPeserta = peserta.filter(p =>
     p.nama.toLowerCase().includes(search.toLowerCase()) ||
     p.utusan.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredPeserta.length / itemsPerPage);
+  const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const startIndex = (activePage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPeserta = filteredPeserta.slice(startIndex, endIndex);
 
   // Quantization helpers for AI Classifier
   const quantizeScore = (score: number) => {
@@ -847,7 +862,7 @@ export default function KelulusanTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-150 dark:divide-navy-850 text-xs text-slate-650 dark:text-slate-350">
-              {filteredPeserta.map((p, idx) => {
+              {paginatedPeserta.map((p, idx) => {
                 const presentSesiNums = presensi.filter(pr => pr.id === p.id).map(pr => pr.sesi);
                 
                 let attendedMinutes = 0;
@@ -864,7 +879,7 @@ export default function KelulusanTab({
                     
                     {/* NO Column */}
                     <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 w-12 text-center font-mono font-bold text-[10px] text-slate-400 dark:text-slate-500">
-                      {idx + 1}
+                      {startIndex + idx + 1}
                     </td>
 
                     {/* Name column */}
@@ -959,6 +974,61 @@ export default function KelulusanTab({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {filteredPeserta.length > 0 && (
+          <div className="px-6 py-4 border-t border-slate-150 dark:border-navy-850 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/20 dark:bg-slate-950/5 rounded-b-[20px]">
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Menampilkan <span className="text-emerald-600 dark:text-emerald-400">{Math.min(startIndex + 1, filteredPeserta.length)}</span> - <span className="text-emerald-600 dark:text-emerald-400">{Math.min(endIndex, filteredPeserta.length)}</span> dari <span className="text-slate-800 dark:text-white">{filteredPeserta.length}</span> Peserta
+            </div>
+            
+            <div className="flex items-center space-x-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150 select-none cursor-pointer"
+              >
+                Sebelumnya
+              </button>
+              
+              {/* Page Number Buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                const isActive = pageNum === activePage;
+                if (totalPages > 5 && Math.abs(pageNum - activePage) > 1 && pageNum !== 1 && pageNum !== totalPages) {
+                  if (pageNum === 2 || pageNum === totalPages - 1) {
+                    return <span key={pageNum} className="text-slate-400 px-1 font-bold text-xs select-none">...</span>;
+                  }
+                  return null;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7.5 h-7.5 rounded-lg text-[11px] font-black transition duration-150 flex items-center justify-center select-none cursor-pointer ${
+                      isActive 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200 dark:border-navy-800 bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-navy-900/60 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150 select-none cursor-pointer"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* POP-UP: MODAL EDIT DATA EVALUASI DAN AKADEMIS */}

@@ -6,6 +6,104 @@ import './index.css';
 // Global error swallow guard for cross-origin "Script error." that can occur
 // in sandboxed iframe environments or when loading external mapping resources.
 if (typeof window !== 'undefined') {
+  // Global inspect prevention and shortcut blocking
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    // Prevent F12
+    if (e.key === 'F12') {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+Shift+I / Cmd+Option+I
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+Shift+J / Cmd+Option+J
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+Shift+C / Cmd+Option+C
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+U / Cmd+Option+U (view-source)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  // Global console scrub/masking to protect database URLs, keys, and login parameters from Console Inspect
+  const maskSensitiveData = (arg: any): any => {
+    if (typeof arg === 'string') {
+      let clean = arg;
+      // Mask JWT tokens/keys (starts with eyJ...)
+      clean = clean.replace(/eyJ[a-zA-Z0-9-_=]+\.[a-zA-Z0-9-_=]+\.?[a-zA-Z0-9-_.+/=]*/g, '[REDACTED_SECURE_TOKEN]');
+      // Mask Supabase URLs
+      clean = clean.replace(/[a-zA-Z0-9-]+\.supabase\.co/g, '[REDACTED_SECURE_URL]');
+      // Mask typical secrets in JSON format strings
+      clean = clean.replace(/(password|pass|key|secret)["']?\s*:\s*["']([^"']+)["']/gi, '$1: "[REDACTED]"');
+      return clean;
+    }
+    
+    if (arg && typeof arg === 'object') {
+      try {
+        const cloned = JSON.parse(JSON.stringify(arg));
+        const recursiveMask = (obj: any) => {
+          for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+              const lowerKey = key.toLowerCase();
+              if (
+                lowerKey.includes('password') || 
+                lowerKey.includes('key') || 
+                lowerKey.includes('secret') || 
+                lowerKey.includes('token') || 
+                lowerKey === 'url'
+              ) {
+                if (typeof obj[key] === 'string') {
+                  obj[key] = '[REDACTED]';
+                }
+              } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                recursiveMask(obj[key]);
+              } else if (typeof obj[key] === 'string') {
+                obj[key] = maskSensitiveData(obj[key]);
+              }
+            }
+          }
+        };
+        recursiveMask(cloned);
+        return cloned;
+      } catch {
+        return '[Object - Secure State]';
+      }
+    }
+    return arg;
+  };
+
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const originalInfo = console.info;
+
+  console.log = (...args: any[]) => {
+    originalLog(...args.map(maskSensitiveData));
+  };
+  console.warn = (...args: any[]) => {
+    originalWarn(...args.map(maskSensitiveData));
+  };
+  console.error = (...args: any[]) => {
+    originalError(...args.map(maskSensitiveData));
+  };
+  console.info = (...args: any[]) => {
+    originalInfo(...args.map(maskSensitiveData));
+  };
+
   const oldOnError = window.onerror;
   window.onerror = function (message, source, lineno, colno, error) {
     const msgStr = String(message || '');
