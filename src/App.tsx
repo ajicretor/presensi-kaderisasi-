@@ -131,7 +131,13 @@ export default function App() {
         if (parsed.presensi) setPresensi(parsed.presensi);
         if (parsed.tim) setTim(parsed.tim);
         if (parsed.activeSesiId) setActiveSesiId(parsed.activeSesiId);
-        if (parsed.branding) setBranding(parsed.branding);
+        if (parsed.branding) {
+          let b = parsed.branding;
+          if (b && (!b.logo || b.logo.includes('stroke-width="9"') || b.logo.includes('M30 40'))) {
+            b = { ...b, logo: DEFAULT_BRANDING.logo };
+          }
+          setBranding(b);
+        }
       } catch (e) {
         console.error("Local data parsing failed:", e);
       }
@@ -225,7 +231,20 @@ export default function App() {
         setSesi(data.sesi || []);
         setPresensi(data.presensi || []);
         setTim(data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM);
-        if (data.branding) setBranding(data.branding);
+        
+        let finalBranding = data.branding || branding;
+        if (finalBranding && (
+          !finalBranding.logo || 
+          finalBranding.logo.includes('stroke-width="9"') || 
+          finalBranding.logo.includes('M30 40')
+        )) {
+          finalBranding = {
+            ...finalBranding,
+            logo: DEFAULT_BRANDING.logo
+          };
+          await syncBranding(finalBranding);
+        }
+        setBranding(finalBranding);
 
         // Simpan data dari Cloud ke Local Storage agar sinkron
         const current = {
@@ -234,7 +253,7 @@ export default function App() {
           presensi: data.presensi || [],
           tim: data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM,
           activeSesiId,
-          branding: data.branding || branding,
+          branding: finalBranding,
         };
         safeStorage.setItem('SIANSOR_STATE_V7', JSON.stringify(current));
 
