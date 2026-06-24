@@ -36,7 +36,9 @@ import {
   syncPresensi,
   syncTim,
   deleteTimFromSupabase,
-  syncBranding
+  syncBranding,
+  syncRekapKelulusan,
+  deleteRekapKelulusanFromSupabase
 } from './supabase';
 
 import LoginScreen from './components/LoginScreen';
@@ -349,18 +351,58 @@ export default function App() {
   };
 
   // --- ACTIONS: PESERTA ---
-  const handleSavePeserta = async (p: Peserta) => {
-    const isNew = !peserta.some(k => k.id === p.id);
-    const newList = isNew ? [...peserta, p] : peserta.map(k => k.id === p.id ? p : k);
+  const handleSavePeserta = async (p: Peserta, originalId?: string) => {
+    const isIdRenamed = originalId && originalId !== p.id;
     
-    setPeserta(newList);
-    saveStateToLocalStorage({ peserta: newList });
+    if (isIdRenamed || !originalId) {
+      const isTaken = peserta.some(k => k.id === p.id && k.id !== originalId);
+      if (isTaken) {
+        triggerAlert("Error ID Duplikat", `Nomor ID/Card "${p.id}" sudah digunakan oleh peserta lain.`, "danger");
+        return;
+      }
+    }
 
-    if (supabaseConnected) {
-      const ok = await syncPeserta([p]);
-      if (ok) triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan secara real-time.`, "success");
+    let newList = [...peserta];
+    let newPresensi = [...presensi];
+
+    if (isIdRenamed) {
+      newList = peserta.map(k => k.id === originalId ? p : k);
+      newPresensi = presensi.map(pr => pr.id === originalId ? { ...pr, id: p.id } : pr);
+      
+      setPeserta(newList);
+      setPresensi(newPresensi);
+      saveStateToLocalStorage({ peserta: newList, presensi: newPresensi });
+
+      if (supabaseConnected) {
+        await deletePesertaFromSupabase(originalId);
+        await deleteRekapKelulusanFromSupabase(originalId);
+        
+        const okPeserta = await syncPeserta([p]);
+        const okPresensi = await syncPresensi(newPresensi);
+        await syncRekapToSupabase(newList);
+        
+        if (okPeserta && okPresensi) {
+          triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${p.id}".`, "success");
+        } else {
+          triggerAlert("Data Disimpan", `Data terupdate dengan beberapa sinkronisasi cloud tertunda.`, "warning");
+        }
+      } else {
+        triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${p.id}" secara lokal.`, "success");
+      }
     } else {
-      triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan di penyimpanan lokal.`, "success");
+      const isNew = !peserta.some(k => k.id === p.id);
+      newList = isNew ? [...peserta, p] : peserta.map(k => k.id === p.id ? p : k);
+      
+      setPeserta(newList);
+      saveStateToLocalStorage({ peserta: newList });
+
+      if (supabaseConnected) {
+        const ok = await syncPeserta([p]);
+        await syncRekapToSupabase(newList);
+        if (ok) triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan secara real-time.`, "success");
+      } else {
+        triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan di penyimpanan lokal.`, "success");
+      }
     }
   };
 
@@ -377,6 +419,8 @@ export default function App() {
 
       if (supabaseConnected) {
         await deletePesertaFromSupabase(id);
+        await deleteRekapKelulusanFromSupabase(id);
+        await syncPresensi(newPresensi);
       }
       triggerAlert("Hapus Berhasil", "Data kader telah dihapus dari sistem.", "success");
     });
@@ -473,6 +517,37 @@ export default function App() {
   };
 
   // --- ACTIONS: EVALUASI ACADEMIS ---
+  const syncRekapToSupabase = async (listPeserta: Peserta[]) => {
+    if (!supabaseConnected) return;
+    try {
+      const totalDuration = sesi.reduce((acc, s) => acc + (s.duration || 0), 0) || 1;
+      const rekapList = listPeserta.map(p => {
+        const presentSesiNums = presensi.filter(pr => pr.id === p.id).map(pr => pr.sesi);
+        let attendedMinutes = 0;
+        sesi.forEach(s => {
+          if (presentSesiNums.includes(s.num)) {
+            attendedMinutes += (s.duration || 0);
+          }
+        });
+        const pct = Math.round((attendedMinutes / totalDuration) * 100) || 0;
+        return {
+          id: p.id,
+          nama: p.nama,
+          utusan: p.utusan,
+          total_hadir_menit: attendedMinutes,
+          persentase_kehadiran: pct,
+          izin_menit: p.izin_menit || 0,
+          evaluasi_sistem: p.status_kelulusan,
+          no_sertifikat: p.no_sertifikat || '',
+          status_kelulusan: p.status_kelulusan
+        };
+      });
+      await syncRekapKelulusan(rekapList);
+    } catch (e) {
+      console.error("Failed to sync rekap kelulusan:", e);
+    }
+  };
+
   const handleSaveEvaluasi = async (id: string, updates: Partial<Peserta>) => {
     const newList = peserta.map(p => p.id === id ? { ...p, ...updates } : p);
     setPeserta(newList);
@@ -480,7 +555,10 @@ export default function App() {
 
     if (supabaseConnected) {
       const matched = newList.find(x => x.id === id);
-      if (matched) await syncPeserta([matched]);
+      if (matched) {
+        await syncPeserta([matched]);
+        await syncRekapToSupabase(newList);
+      }
     }
   };
 
@@ -490,6 +568,7 @@ export default function App() {
 
     if (supabaseConnected) {
       await syncPeserta(updatedPelestari);
+      await syncRekapToSupabase(updatedPelestari);
     }
     triggerAlert("Evaluasi Rampung", "Model AI Decision Tree C4.5 berhasil memperbarui status seluruh kader.", "success");
   };

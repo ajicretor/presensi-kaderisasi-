@@ -127,6 +127,21 @@ ALTER TABLE sesi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE presensi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE tim DISABLE ROW LEVEL SECURITY;
 ALTER TABLE branding DISABLE ROW LEVEL SECURITY;
+
+-- 7. Tabel Rekap Kelulusan
+CREATE TABLE IF NOT EXISTS rekap_kelulusan (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL,
+  utusan TEXT NOT NULL,
+  total_hadir_menit INTEGER DEFAULT 0,
+  persentase_kehadiran INTEGER DEFAULT 0,
+  izin_menit INTEGER DEFAULT 0,
+  evaluasi_sistem TEXT,
+  no_sertifikat TEXT DEFAULT '',
+  status_kelulusan TEXT DEFAULT 'TIDAK LULUS',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE rekap_kelulusan DISABLE ROW LEVEL SECURITY;
 `;
 
 // Supabase fetching utilities with fallback behavior
@@ -390,5 +405,58 @@ export async function fetchAllFromSupabase(): Promise<any> {
   } catch (e) {
     console.error("Failed to fetch all data from Supabase:", e);
     return null;
+  }
+}
+
+export async function deleteRekapKelulusanFromSupabase(id: string): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const { error } = await client.from('rekap_kelulusan').delete().eq('id', id);
+    return !error;
+  } catch (e) {
+    console.error("Error deleting rekap_kelulusan:", e);
+    return false;
+  }
+}
+
+export async function syncRekapKelulusan(data: {
+  id: string;
+  nama: string;
+  utusan: string;
+  total_hadir_menit: number;
+  persentase_kehadiran: number;
+  izin_menit: number;
+  evaluasi_sistem: string;
+  no_sertifikat: string;
+  status_kelulusan: string;
+}[]): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    let allOk = true;
+    for (const r of data) {
+      const { error } = await client.from('rekap_kelulusan').upsert({
+        id: r.id,
+        nama: r.nama,
+        utusan: r.utusan,
+        total_hadir_menit: r.total_hadir_menit,
+        persentase_kehadiran: r.persentase_kehadiran,
+        izin_menit: r.izin_menit,
+        evaluasi_sistem: r.evaluasi_sistem,
+        no_sertifikat: r.no_sertifikat,
+        status_kelulusan: r.status_kelulusan,
+        updated_at: new Date().toISOString()
+      });
+      if (error) {
+        console.error("Error upserting rekap_kelulusan:", error);
+        allOk = false;
+      }
+    }
+    return allOk;
+  } catch (e) {
+    console.error("Supabase rekap_kelulusan sync error:", e);
+    return false;
   }
 }

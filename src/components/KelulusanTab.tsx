@@ -652,7 +652,7 @@ export default function KelulusanTab({
                 <th style="text-align: center; width: 60px;">Hasil</th>
                 <th style="text-align: center; width: 60px;">Persentase</th>
                 <th style="text-align: center; width: 60px;">Izin / Menit</th>
-                <th style="text-align: center; width: 100px;">Evaluasi AI</th>
+                <th style="text-align: center; width: 100px;">Evaluasi Sistem</th>
                 <th style="width: 120px;">No. Sertifikat</th>
               </tr>
             </thead>
@@ -837,7 +837,7 @@ export default function KelulusanTab({
                 <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">HASIL</th>
                 <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">PERSENTASE</th>
                 <th className="p-3 text-center w-20 border-l dark:border-navy-850">IZIN / MENIT</th>
-                <th className="p-3 text-center w-24 border-l dark:border-navy-850">EVALUASI AI</th>
+                <th className="p-3 text-center w-24 border-l dark:border-navy-850">EVALUASI SISTEM</th>
                 <th className="p-3 w-36 border-l dark:border-navy-850">NO. SERTIFIKAT</th>
                 <th className="p-3 text-center w-24 sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-3px_0_10px_-3px_rgba(0,0,0,0.06)] border-l dark:border-navy-850">AKSI</th>
               </tr>

@@ -5,7 +5,7 @@ import { Peserta, Branding } from '../types';
 interface PesertaTabProps {
   peserta: Peserta[];
   branding: Branding;
-  onSavePeserta: (p: Peserta) => void;
+  onSavePeserta: (p: Peserta, originalId?: string) => void;
   onDeletePeserta: (id: string) => void;
   onPrintQr: (id: string) => void;
 }
@@ -21,6 +21,7 @@ export default function PesertaTab({
   const [isOpenModal, setIsOpenModal] = useState(false);
   
   // Form input states
+  const [originalId, setOriginalId] = useState('');
   const [formId, setFormId] = useState('');
   const [formNama, setFormNama] = useState('');
   const [formUtusan, setFormUtusan] = useState('');
@@ -36,6 +37,7 @@ export default function PesertaTab({
   );
 
   const openAddModal = () => {
+    setOriginalId('');
     setFormId('');
     setFormNama('');
     setFormUtusan('');
@@ -46,6 +48,7 @@ export default function PesertaTab({
   };
 
   const openEditModal = (p: Peserta) => {
+    setOriginalId(p.id);
     setFormId(p.id);
     setFormNama(p.nama);
     setFormUtusan(p.utusan);
@@ -81,19 +84,21 @@ export default function PesertaTab({
       finalId = `IX-22.29.01.${dateStr}.${String(prefix).padStart(3, '0')}`;
     }
 
+    const prevKader = originalId ? peserta.find(k => k.id === originalId) : peserta.find(k => k.id === formId);
+
     onSavePeserta({
-      id: finalId,
+      id: finalId.trim().toUpperCase(),
       nama: formNama.trim().toUpperCase(),
       utusan: formUtusan.trim().toUpperCase(),
       hp: formHp.trim(),
       foto: formFoto,
-      nilai_post_test: formId ? (peserta.find(k => k.id === formId)?.nilai_post_test || 0) : 0,
-      nilai_praktik: formId ? (peserta.find(k => k.id === formId)?.nilai_praktik || 0) : 0,
-      nilai_keaktifan: formId ? (peserta.find(k => k.id === formId)?.nilai_keaktifan || 0) : 0,
-      status_kelulusan: formId ? (peserta.find(k => k.id === formId)?.status_kelulusan || 'TIDAK LULUS') : 'TIDAK LULUS',
-      no_sertifikat: formId ? (peserta.find(k => k.id === formId)?.no_sertifikat || '') : '',
-      izin_menit: formId ? (peserta.find(k => k.id === formId)?.izin_menit || 0) : 0
-    });
+      nilai_post_test: prevKader ? prevKader.nilai_post_test : 0,
+      nilai_praktik: prevKader ? prevKader.nilai_praktik : 0,
+      nilai_keaktifan: prevKader ? prevKader.nilai_keaktifan : 0,
+      status_kelulusan: prevKader ? prevKader.status_kelulusan : 'TIDAK LULUS',
+      no_sertifikat: prevKader ? prevKader.no_sertifikat : '',
+      izin_menit: prevKader ? prevKader.izin_menit : 0
+    }, originalId || undefined);
 
     setIsOpenModal(false);
   };
@@ -236,6 +241,17 @@ export default function PesertaTab({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700 dark:text-slate-350">
               
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">ID / CARD (NOMOR REGISTER)</label>
+                <input
+                  type="text"
+                  value={formId}
+                  onChange={(e) => setFormId(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3.5 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1.5 focus:ring-emerald-500 text-slate-800 dark:text-white font-mono uppercase"
+                  placeholder="Kosongkan untuk auto-generate nomor ID"
+                />
+              </div>
+
               <div>
                 <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">NAMA LENGKAP SESUAI KTP</label>
                 <input
