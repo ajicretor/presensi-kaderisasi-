@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload } from 'lucide-react';
+import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Peserta, Branding } from '../types';
 
 interface PesertaTabProps {
@@ -19,6 +19,8 @@ export default function PesertaTab({
 }: PesertaTabProps) {
   const [search, setSearch] = useState('');
   const [isOpenModal, setIsOpenModal] = useState(false);
+  const [sortBy, setSortBy] = useState<'id' | 'nama' | 'utusan' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   // Form input states
   const [originalId, setOriginalId] = useState('');
@@ -29,12 +31,31 @@ export default function PesertaTab({
   const [formFoto, setFormFoto] = useState('');
   const [fileName, setFileName] = useState('No file chosen');
 
-  // Filter list
-  const filteredPeserta = peserta.filter(p =>
-    p.nama.toLowerCase().includes(search.toLowerCase()) ||
-    p.utusan.toLowerCase().includes(search.toLowerCase()) ||
-    p.id.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleSort = (field: 'id' | 'nama' | 'utusan') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Filter & Sort list
+  const sortedAndFilteredPeserta = [...peserta]
+    .filter(p =>
+      p.nama.toLowerCase().includes(search.toLowerCase()) ||
+      p.utusan.toLowerCase().includes(search.toLowerCase()) ||
+      p.id.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortBy) return 0;
+      const valA = (a[sortBy] || '').toString().trim().toLowerCase();
+      const valB = (b[sortBy] || '').toString().trim().toLowerCase();
+      
+      return sortOrder === 'asc'
+        ? valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
+        : valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   const openAddModal = () => {
     setOriginalId('');
@@ -150,16 +171,55 @@ export default function PesertaTab({
           <table className="w-full text-left border-collapse table-auto">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest border-b border-slate-150 dark:border-navy-850">
-                <th className="p-4 w-36">ID / CARD</th>
-                <th className="p-4">NAMA LENGKAP</th>
-                <th className="p-4">UTUSAN / DELEGASI</th>
+                <th 
+                  className="p-4 w-36 cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-900 select-none transition-colors duration-200"
+                  onClick={() => handleSort('id')}
+                  title="Klik untuk mengurutkan berdasarkan ID Card"
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>ID / CARD</span>
+                    {sortBy === 'id' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-500" /> : <ArrowDown className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40 hover:opacity-100" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="p-4 cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-900 select-none transition-colors duration-200"
+                  onClick={() => handleSort('nama')}
+                  title="Klik untuk mengurutkan berdasarkan Nama"
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>NAMA LENGKAP</span>
+                    {sortBy === 'nama' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-500" /> : <ArrowDown className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40 hover:opacity-100" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="p-4 cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-900 select-none transition-colors duration-200"
+                  onClick={() => handleSort('utusan')}
+                  title="Klik untuk mengurutkan berdasarkan Utusan/Delegasi"
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>UTUSAN / DELEGASI</span>
+                    {sortBy === 'utusan' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-500" /> : <ArrowDown className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40 hover:opacity-100" />
+                    )}
+                  </div>
+                </th>
                 <th className="p-4">NO. HP</th>
                 <th className="p-4 text-center w-36">AKSI OPERASIONAL</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-navy-850 text-xs text-slate-650 dark:text-slate-350 font-medium">
-              {filteredPeserta.length > 0 ? (
-                filteredPeserta.map(p => (
+              {sortedAndFilteredPeserta.length > 0 ? (
+                sortedAndFilteredPeserta.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/10 transition align-middle">
                     <td className="p-4 font-bold text-emerald-500 text-[11px] tracking-wider font-mono">
                       {p.id}

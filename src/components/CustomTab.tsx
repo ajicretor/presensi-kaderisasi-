@@ -34,6 +34,7 @@ export default function CustomTab({
   const [themeColor, setThemeColor] = useState(branding.themeColor);
   const [logo, setLogo] = useState(branding.logo);
   const [delegationType, setDelegationType] = useState(branding.delegationType || 'PAC');
+  const [uploadError, setUploadError] = useState('');
 
   // Synchronize state when branding props change from the parent (e.g. database sync or reload)
   React.useEffect(() => {
@@ -196,6 +197,11 @@ export default function CustomTab({
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                setUploadError('Ukuran gambar maksimal adalah 2MB! File Anda terlalu besar.');
+                                return;
+                              }
+                              setUploadError('');
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 if (event.target?.result) {
@@ -241,6 +247,11 @@ export default function CustomTab({
                         </button>
                       )}
                     </div>
+                    {uploadError && (
+                      <p className="text-[10px] text-rose-500 font-extrabold uppercase tracking-wide animate-pulse">
+                        {uploadError}
+                      </p>
+                    )}
                     <p className="text-[8px] text-slate-450 dark:text-slate-500 font-bold uppercase tracking-wide">
                       Mendukung format gambar PNG, JPG, WEBP, atau SVG. Ukuran Maksimal 2MB.
                     </p>

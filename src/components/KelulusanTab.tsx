@@ -326,13 +326,17 @@ export default function KelulusanTab({
     ctx.fillRect(1150, 800, 30, 30);
 
     // Load logo if uploaded, otherwise draw dynamic vector shield GP Ansor
-    if (customLogo) {
+    const logoToUse = customLogo || (branding?.logo && branding.logo.trim().startsWith('data:image/') ? branding.logo : null);
+    if (logoToUse) {
       const img = new Image();
-      img.src = customLogo;
+      img.src = logoToUse;
       await new Promise((resolve) => {
         img.onload = () => {
           ctx.drawImage(img, 545, 80, 110, 110);
           resolve(true);
+        };
+        img.onerror = () => {
+          resolve(false);
         };
       });
     } else {

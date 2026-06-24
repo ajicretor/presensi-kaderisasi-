@@ -306,18 +306,97 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
   if (!client) return false;
 
   try {
-    const { error } = await client.from('branding').upsert({
-      id: 1,
-      appName: branding.appName,
-      organisasi: branding.organisasi,
-      cabang: branding.cabang,
-      totalSesi: branding.totalSesi,
-      logo: branding.logo,
-      themeColor: branding.themeColor,
-      delegationType: branding.delegationType || 'PAC'
-    });
-    return !error;
+    // Dynamically query the branding table first to detect active column casing (e.g. appName vs appname)
+    const { data: existingBranding } = await client.from('branding').select('*').eq('id', 1).maybeSingle();
+    
+    const upsertData: any = { id: 1 };
+    
+    if (existingBranding) {
+      const dbKeys = Object.keys(existingBranding);
+      
+      // appName vs appname
+      if (dbKeys.includes('appName')) {
+        upsertData.appName = branding.appName;
+      } else if (dbKeys.includes('appname')) {
+        upsertData.appname = branding.appName;
+      } else {
+        upsertData.appName = branding.appName;
+      }
+
+      // organisasi
+      upsertData.organisasi = branding.organisasi;
+      
+      // cabang
+      upsertData.cabang = branding.cabang;
+
+      // totalSesi vs totalsesi
+      if (dbKeys.includes('totalSesi')) {
+        upsertData.totalSesi = branding.totalSesi;
+      } else if (dbKeys.includes('totalsesi')) {
+        upsertData.totalsesi = branding.totalSesi;
+      } else {
+        upsertData.totalSesi = branding.totalSesi;
+      }
+
+      // logo
+      upsertData.logo = branding.logo;
+
+      // themeColor vs themecolor
+      if (dbKeys.includes('themeColor')) {
+        upsertData.themeColor = branding.themeColor;
+      } else if (dbKeys.includes('themecolor')) {
+        upsertData.themecolor = branding.themeColor;
+      } else {
+        upsertData.themeColor = branding.themeColor;
+      }
+
+      // delegationType vs delegationtype
+      if (dbKeys.includes('delegationType')) {
+        upsertData.delegationType = branding.delegationType || 'PAC';
+      } else if (dbKeys.includes('delegationtype')) {
+        upsertData.delegationtype = branding.delegationType || 'PAC';
+      } else {
+        upsertData.delegationType = branding.delegationType || 'PAC';
+      }
+    } else {
+      // If table is completely empty, try default camelCase
+      upsertData.appName = branding.appName;
+      upsertData.organisasi = branding.organisasi;
+      upsertData.cabang = branding.cabang;
+      upsertData.totalSesi = branding.totalSesi;
+      upsertData.logo = branding.logo;
+      upsertData.themeColor = branding.themeColor;
+      upsertData.delegationType = branding.delegationType || 'PAC';
+    }
+
+    const { error } = await client.from('branding').upsert(upsertData);
+    if (error) {
+      console.error("Error upserting branding to Supabase:", error);
+      
+      // Fallback: If camelCase columns failed on empty table, try lowercase fallback
+      if (!existingBranding) {
+        const fallbackData = {
+          id: 1,
+          appname: branding.appName,
+          organisasi: branding.organisasi,
+          cabang: branding.cabang,
+          totalsesi: branding.totalSesi,
+          logo: branding.logo,
+          themecolor: branding.themeColor,
+          delegationtype: branding.delegationType || 'PAC'
+        };
+        const { error: err2 } = await client.from('branding').upsert(fallbackData);
+        if (err2) {
+          console.error("Fallback lowercase upsert failed:", err2);
+          return false;
+        }
+        return true;
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    console.error("Exception syncing branding to Supabase:", e);
     return false;
   }
 }
@@ -393,13 +472,13 @@ export async function fetchAllFromSupabase(): Promise<any> {
         permissions: t.permissions || []
       })),
       branding: branding ? {
-        appName: branding.appName,
-        organisasi: branding.organisasi,
-        cabang: branding.cabang,
-        totalSesi: branding.totalSesi,
+        appName: branding.appName || branding.appname || 'SI-ANSOR PRO v7.0',
+        organisasi: branding.organisasi || '',
+        cabang: branding.cabang || '',
+        totalSesi: branding.totalSesi !== undefined ? branding.totalSesi : (branding.totalsesi !== undefined ? branding.totalsesi : 14),
         logo: branding.logo,
-        themeColor: branding.themeColor as "emerald" | "navy" | "indigo" | "rose" | "amber",
-        delegationType: branding.delegationType || 'PAC'
+        themeColor: (branding.themeColor || branding.themecolor || 'emerald') as "emerald" | "navy" | "indigo" | "rose" | "amber",
+        delegationType: branding.delegationType || branding.delegationtype || 'PAC'
       } : null
     };
   } catch (e) {
