@@ -66,14 +66,6 @@ const BOGOR_KECAMATAN_COORDS: Record<string, { lat: number; lng: number }> = {
   'tenjolaya': { lat: -6.6631, lng: 106.7117 }
 };
 
-const GOOGLE_MAPS_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
-
-const hasValidKey = Boolean(GOOGLE_MAPS_KEY) && GOOGLE_MAPS_KEY !== 'YOUR_API_KEY';
-
 
 interface DashboardTabProps {
   peserta: Peserta[];
@@ -131,7 +123,6 @@ export default function DashboardTab({
   });
 
   const [activePin, setActivePin] = useState<{ name: string; count: number; lat: number; lng: number } | null>(null);
-  const [mapMode, setMapMode] = useState<'google' | 'interactive' | 'schematic'>(hasValidKey ? 'google' : 'interactive');
 
   // Get participants filtered by active pin
   const activePinPeserta = useMemo(() => {

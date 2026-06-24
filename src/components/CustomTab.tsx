@@ -35,6 +35,17 @@ export default function CustomTab({
   const [logo, setLogo] = useState(branding.logo);
   const [delegationType, setDelegationType] = useState(branding.delegationType || 'PAC');
 
+  // Synchronize state when branding props change from the parent (e.g. database sync or reload)
+  React.useEffect(() => {
+    setAppName(branding.appName);
+    setOrg(branding.organisasi);
+    setCabang(branding.cabang);
+    setTotalSesi(branding.totalSesi);
+    setThemeColor(branding.themeColor);
+    setLogo(branding.logo);
+    setDelegationType(branding.delegationType || 'PAC');
+  }, [branding]);
+
   // Supabase form keys
   const keys = getSupabaseKeys();
   const [sbUrl, setSbUrl] = useState(keys.url);
@@ -188,7 +199,18 @@ export default function CustomTab({
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 if (event.target?.result) {
-                                  setLogo(event.target.result as string);
+                                  const newLogo = event.target.result as string;
+                                  setLogo(newLogo);
+                                  // Automatically save and sync the logo immediately to avoid state loss!
+                                  onSaveBranding({
+                                    appName: appName.trim(),
+                                    organisasi: org.trim(),
+                                    cabang: cabang.trim(),
+                                    totalSesi,
+                                    logo: newLogo,
+                                    themeColor,
+                                    delegationType: delegationType.trim()
+                                  });
                                 }
                               };
                               reader.readAsDataURL(file);
@@ -200,7 +222,19 @@ export default function CustomTab({
                       {logo !== `<svg class="w-8 h-8" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30 40 C30 40, 55 35, 60 35 C65 35, 90 40, 90 40 C90 40, 93 72, 60 92 C27 72, 30 40, 30 40 Z" stroke="#1E70CD" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="M42 55 L58 71 L86 43" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /><path d="M52 45 L74 23" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" /><path d="M72 23 H86 V37" stroke="#1E70CD" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" /><path d="M51 64 L58 71 L66 63" stroke="#4FAF3C" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /></svg>` && (
                         <button
                           type="button"
-                          onClick={() => setLogo(`<svg class="w-8 h-8" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30 40 C30 40, 55 35, 60 35 C65 35, 90 40, 90 40 C90 40, 93 72, 60 92 C27 72, 30 40, 30 40 Z" stroke="#1E70CD" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="M42 55 L58 71 L86 43" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /><path d="M52 45 L74 23" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" /><path d="M72 23 H86 V37" stroke="#1E70CD" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" /><path d="M51 64 L58 71 L66 63" stroke="#4FAF3C" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /></svg>`)}
+                          onClick={() => {
+                            const defaultLogo = `<svg class="w-8 h-8" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30 40 C30 40, 55 35, 60 35 C65 35, 90 40, 90 40 C90 40, 93 72, 60 92 C27 72, 30 40, 30 40 Z" stroke="#1E70CD" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="M42 55 L58 71 L86 43" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /><path d="M52 45 L74 23" stroke="#1E70CD" stroke-width="10" stroke-linecap="round" /><path d="M72 23 H86 V37" stroke="#1E70CD" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" /><path d="M51 64 L58 71 L66 63" stroke="#4FAF3C" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+                            setLogo(defaultLogo);
+                            onSaveBranding({
+                              appName: appName.trim(),
+                              organisasi: org.trim(),
+                              cabang: cabang.trim(),
+                              totalSesi,
+                              logo: defaultLogo,
+                              themeColor,
+                              delegationType: delegationType.trim()
+                            });
+                          }}
                           className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/45 text-rose-500 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-colors"
                         >
                           Reset Default

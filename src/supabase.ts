@@ -9,12 +9,15 @@ export function getSupabaseKeys() {
   const customUrl = safeStorage.getItem('SIANSOR_SUPABASE_URL');
   const customKey = safeStorage.getItem('SIANSOR_SUPABASE_KEY');
   const meta = (import.meta as any);
+  
+  const envUrl = (meta.env ? (meta.env.VITE_SUPABASE_URL as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_URL as string) : '') || '';
+  const envKey = (meta.env ? (meta.env.VITE_SUPABASE_ANON_KEY as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_ANON_KEY as string) : '') || '';
 
   return {
-    url: customUrl || (meta.env ? (meta.env.VITE_SUPABASE_URL as string) : '') || '',
-    key: customKey || (meta.env ? (meta.env.VITE_SUPABASE_ANON_KEY as string) : '') || '',
+    url: customUrl || envUrl,
+    key: customKey || envKey,
     isCustom: !!(customUrl && customKey),
-    isEnv: !!(meta.env && meta.env.VITE_SUPABASE_URL && meta.env.VITE_SUPABASE_ANON_KEY)
+    isEnv: !!envUrl && !!envKey
   };
 }
 

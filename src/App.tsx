@@ -76,6 +76,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dash' | 'scan' | 'sesi' | 'peserta' | 'rekap' | 'kelulusan' | 'tim' | 'custom'>('dash');
   const [currentUser, setCurrentUser] = useState<Tim | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // Supabase State
@@ -653,10 +654,14 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-navy-950 font-sans transition-colors duration-350">
+    <div className="flex h-screen w-full overflow-hidden text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-navy-950 font-sans transition-colors duration-350">
       
-      {/* SIDEBAR FOR DESKTOP */}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-slate-900 border-r border-slate-850 shadow-2xl transition-transform duration-300 md:translate-x-0 md:static md:flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* SIDEBAR FOR DESKTOP & MOBILE */}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 border-r border-slate-850 shadow-2xl transition-all duration-300 overflow-hidden md:static md:flex-shrink-0 ${
+        isSidebarCollapsed 
+          ? 'w-0 md:w-0 opacity-0 border-r-0 pointer-events-none' 
+          : 'w-72 md:w-72 opacity-100'
+      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         
         {/* Brand Banner */}
         <div className="flex h-20 items-center px-6 border-b border-slate-800 gap-3">
@@ -685,7 +690,7 @@ export default function App() {
               }`}
             >
               <LayoutDashboard className="w-4.5 h-4.5" />
-              <span>Beranda Dashboard</span>
+              <span>Dashboard</span>
             </button>
           )}
 
@@ -828,8 +833,15 @@ export default function App() {
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-205 dark:border-navy-850 px-6 flex items-center justify-between shrink-0 z-20 transition-colors duration-350 shadow-xs">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-navy-950 md:hidden transition"
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setIsSidebarOpen(!isSidebarOpen);
+                } else {
+                  setIsSidebarCollapsed(!isSidebarCollapsed);
+                }
+              }}
+              className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-navy-950 transition flex items-center justify-center shrink-0"
+              title="Sembunyikan / Tampilkan Sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -924,6 +936,7 @@ export default function App() {
               branding={branding}
               currentUserRole={currentUser.role}
               currentUserPermissions={currentUser.permissions}
+              currentUserName={currentUser.nama}
             />
           )}
 
@@ -937,6 +950,7 @@ export default function App() {
               onBulkUpdateKelulusan={handleBulkUpdateKelulusan}
               currentUserRole={currentUser.role}
               currentUserPermissions={currentUser.permissions}
+              currentUserName={currentUser.nama}
             />
           )}
 

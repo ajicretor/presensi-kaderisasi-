@@ -8,6 +8,7 @@ interface RekapTabProps {
   branding: Branding;
   currentUserRole: string;
   currentUserPermissions: string[];
+  currentUserName: string;
 }
 
 export default function RekapTab({
@@ -15,7 +16,8 @@ export default function RekapTab({
   sesi,
   branding,
   currentUserRole,
-  currentUserPermissions
+  currentUserPermissions,
+  currentUserName
 }: RekapTabProps) {
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +36,23 @@ export default function RekapTab({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const formatPrintDateTime = () => {
+      const d = new Date();
+      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const day = d.getDate();
+      const month = months[d.getMonth()];
+      const year = d.getFullYear();
+      const time = d.toTimeString().split(' ')[0];
+      return `${day} ${month} ${year}, ${time} WIB`;
+    };
+
+    const footerHtml = `
+      <div style="margin-top: 35px; border-top: 1px solid #cbd5e1; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #64748b; font-family: monospace; font-weight: bold;">
+        <div>VALIDASI SISTEM: REKAP PRESENSI SAH MELALUI ${branding.appName.toUpperCase()}</div>
+        <div>OPERATOR CETAK: ${currentUserName.toUpperCase()} &nbsp;|&nbsp; WAKTU CETAK: ${formatPrintDateTime()}</div>
+      </div>
+    `;
+
     printWindow.document.write(`
       <html>
         <head>
@@ -44,7 +63,12 @@ export default function RekapTab({
             th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-size: 11px; }
             th { background-color: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
             .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background-color: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 11px; }
-            .header-flex { display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+            .header-flex { display: flex !important; align-items: center !important; gap: 15px !important; border-bottom: 2px solid #0f172a !important; padding-bottom: 12px !important; margin-bottom: 20px !important; }
+            .logo-container { width: 64px !important; height: 64px !important; min-width: 64px !important; min-height: 64px !important; max-width: 64px !important; max-height: 64px !important; display: flex !important; align-items: center !important; justify-content: center !important; background-color: #ecfdf5 !important; border: 1px solid #d1fae5 !important; border-radius: 12px !important; overflow: hidden !important; box-sizing: border-box !important; }
+            .logo-container img { width: 44px !important; height: 44px !important; max-width: 44px !important; max-height: 44px !important; object-fit: contain !important; }
+            .logo-container svg { width: 44px !important; height: 44px !important; max-width: 44px !important; max-height: 44px !important; }
+            .logo-container div { width: 44px !important; height: 44px !important; max-width: 44px !important; max-height: 44px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+            .logo-container div svg { width: 44px !important; height: 44px !important; max-width: 44px !important; max-height: 44px !important; }
             .badge { display: inline-block; font-size: 8px; font-weight: bold; padding: 2px 6px; border-radius: 4px; uppercase; }
             .badge-on { background-color: #ecfdf5; color: #047857; border: 1px solid #34d399; }
             .badge-off { background-color: #fff1f2; color: #b91c1c; border: 1px solid #f87171; }
@@ -52,6 +76,7 @@ export default function RekapTab({
         </head>
         <body>
           ${printContent}
+          ${footerHtml}
           <script>
             window.onload = function() {
               window.print();
@@ -127,23 +152,23 @@ export default function RekapTab({
       >
         
         {/* Kop Surat Header */}
-        <div className="flex items-center space-x-4 pb-6 border-b-2 border-slate-200 dark:border-navy-800 mb-6 font-sans">
-          <div className="w-16 h-16 bg-emerald-50 dark:bg-navy-950 border border-emerald-100 dark:border-navy-800 rounded-xl flex items-center justify-center shrink-0">
+        <div className="flex items-center space-x-4 pb-6 border-b-2 border-slate-200 dark:border-navy-800 mb-6 font-sans header-flex">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-navy-950 border border-emerald-100 dark:border-navy-800 rounded-xl flex items-center justify-center shrink-0 logo-container">
             {branding && branding.logo && (typeof branding.logo === 'string') && (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) ? (
-              <div dangerouslySetInnerHTML={{ __html: branding.logo }} className="w-11 h-11 text-emerald-600 fill-emerald-600 scale-120 flex items-center justify-center" />
+              <div dangerouslySetInnerHTML={{ __html: branding.logo }} className="w-11 h-11 text-emerald-600 fill-emerald-600 scale-120 flex items-center justify-center logo-svg" />
             ) : branding && branding.logo ? (
-              <img src={branding.logo} alt="Logo" className="w-11 h-11 object-contain rounded-lg" referrerPolicy="no-referrer" />
+              <img src={branding.logo} alt="Logo" className="w-11 h-11 object-contain rounded-lg logo-img" referrerPolicy="no-referrer" />
             ) : null}
           </div>
-          <div>
+          <div className="header-info">
             <h2 className="text-xl font-black text-navy-900 dark:text-white uppercase tracking-wider leading-none">Rekap Presensi Kaderisasi</h2>
-            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase leading-tight">{branding.organisasi}</p>
-            <p className="text-xs font-black text-emerald-500 uppercase tracking-widest mt-0.5">{branding.cabang}</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase leading-tight org-text">{branding.organisasi}</p>
+            <p className="text-xs font-black text-emerald-500 uppercase tracking-widest mt-0.5 cabang-text">{branding.cabang}</p>
           </div>
         </div>
 
         {/* Audit Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs font-bold text-slate-700 dark:text-slate-350 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-navy-900 font-sans uppercase tracking-wider">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs font-bold text-slate-700 dark:text-slate-350 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-navy-900 font-sans uppercase tracking-wider meta-grid">
           <div><span className="text-slate-400 dark:text-slate-500 mr-2 font-black">Kaderisasi:</span> Pelatihan Kepemimpinan Dasar (PKD)</div>
           <div><span className="text-slate-400 dark:text-slate-500 mr-2 font-black">Aktif Sesi:</span> Sesi Ke-{liveActiveSesi.num}</div>
           <div><span className="text-slate-400 dark:text-slate-500 mr-2 font-black">Materi Aktif:</span> {liveActiveSesi.materi}</div>

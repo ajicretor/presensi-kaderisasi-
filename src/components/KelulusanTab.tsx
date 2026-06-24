@@ -24,6 +24,7 @@ interface KelulusanTabProps {
   onBulkUpdateKelulusan: (updatedPeserta: Peserta[]) => void;
   currentUserRole: string;
   currentUserPermissions: string[];
+  currentUserName: string;
 }
 
 export default function KelulusanTab({
@@ -34,7 +35,8 @@ export default function KelulusanTab({
   onSaveEvaluasi,
   onBulkUpdateKelulusan,
   currentUserRole,
-  currentUserPermissions
+  currentUserPermissions,
+  currentUserName
 }: KelulusanTabProps) {
   const [search, setSearch] = useState('');
   
@@ -525,6 +527,161 @@ export default function KelulusanTab({
     }
   };
 
+  const handlePrintKelulusan = () => {
+    if (!canRekap) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    // Build logo HTML
+    let logoHtml = '';
+    if (branding && branding.logo && (typeof branding.logo === 'string')) {
+      if (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) {
+        logoHtml = `<div class="logo-container"><div>${branding.logo}</div></div>`;
+      } else {
+        logoHtml = `<div class="logo-container"><img src="${branding.logo}" alt="Logo" /></div>`;
+      }
+    }
+
+    // Sort participants by name
+    const sortedPeserta = [...peserta].sort((a, b) => a.nama.localeCompare(b.nama));
+
+    // Build table header for Sesi dynamically
+    const sesiHeadersHtml = sortedSesi.map(s => {
+      return `<th style="text-align: center; font-size: 8px; max-width: 90px; min-width: 60px; line-height: 1.1;">${s.materi.toUpperCase()}<br/><span style="font-size: 7px; color: #64748b; font-weight: normal;">(${s.duration}M)</span></th>`;
+    }).join('');
+
+    // Build table rows
+    const rowsHtml = sortedPeserta.map((p, index) => {
+      const presentSesiNums = presensi.filter(pr => pr.id === p.id).map(pr => pr.sesi);
+      
+      let attendedMinutes = 0;
+      const sesiCellsHtml = sortedSesi.map(s => {
+        const isPresent = presentSesiNums.includes(s.num);
+        if (isPresent) {
+          attendedMinutes += (s.duration || 0);
+        }
+        return `<td style="text-align: center; font-family: monospace; font-size: 10px; font-weight: bold; color: ${isPresent ? '#10b981' : '#f87171'}; background-color: ${isPresent ? '#f0fdf4' : '#fef2f2'};">${isPresent ? s.duration : 0}</td>`;
+      }).join('');
+
+      const presPct = Math.round((attendedMinutes / totalDuration) * 100) || 0;
+
+      let badgeClass = 'badge-off';
+      if (p.status_kelulusan === 'LULUS') {
+        badgeClass = 'badge-on';
+      } else if (p.status_kelulusan === 'LULUS BERSYARAT') {
+        badgeClass = 'badge-pending';
+      }
+
+      return `
+        <tr>
+          <td style="text-align: center;">${index + 1}</td>
+          <td style="font-weight: bold; text-transform: uppercase;">
+            <div>${p.nama}</div>
+            <div style="font-size: 8px; color: #64748b; font-weight: normal; margin-top: 2px;">PAC ${p.utusan}</div>
+          </td>
+          ${sesiCellsHtml}
+          <td style="text-align: center; font-family: monospace; font-weight: bold;">${attendedMinutes} m</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; color: ${presPct >= minPres ? '#10b981' : '#ef4444'};">${presPct}%</td>
+          <td style="text-align: center; font-family: monospace;">${p.izin_menit || 0} m</td>
+          <td style="text-align: center;"><span class="badge ${badgeClass}">${p.status_kelulusan}</span></td>
+          <td style="font-family: monospace; font-size: 9px; color: #475569;">${p.no_sertifikat || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Laporan_Rekapitulasi_Hasil_Kelulusan</title>
+          <style>
+            body { font-family: 'Plus Jakarta Sans', sans-serif, Arial; padding: 30px; color: #1e293b; background-color: #ffffff; }
+            
+            /* Kop Surat Styles */
+            .header-flex { display: flex; align-items: center; gap: 20px; border-bottom: 3px double #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
+            .logo-container { width: 70px; height: 70px; min-width: 70px; min-height: 70px; display: flex; align-items: center; justify-content: center; background-color: #ecfdf5; border: 1.5px solid #d1fae5; border-radius: 14px; overflow: hidden; box-sizing: border-box; }
+            .logo-container img { width: 48px; height: 48px; object-fit: contain; }
+            .logo-container svg { width: 48px; height: 48px; }
+            .logo-container div { display: flex; align-items: center; justify-content: center; }
+            
+            .header-info { flex-grow: 1; }
+            .title-main { font-size: 16px; font-weight: 900; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.02em; }
+            .title-sub1 { font-size: 13px; font-weight: 800; text-transform: uppercase; margin: 5px 0 0 0; color: #334155; }
+            .title-sub2 { font-size: 11px; font-weight: 900; text-transform: uppercase; margin: 2px 0 0 0; color: #10b981; letter-spacing: 0.1em; }
+            
+            /* Meta Grid Info */
+            .meta-info { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 25px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; display: inline-block; }
+            
+            /* Table Styles */
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+            th { background-color: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 9px; font-weight: 800; letter-spacing: 0.05em; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            
+            /* Status Badges */
+            .badge { display: inline-block; font-size: 8px; font-weight: 900; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+            .badge-on { background-color: #d1fae5; color: #065f46; border: 1.5px solid #34d399; }
+            .badge-pending { background-color: #fef3c7; color: #92400e; border: 1.5px solid #fbbf24; }
+            .badge-off { background-color: #fee2e2; color: #991b1b; border: 1.5px solid #f87171; }
+            
+            @media print {
+              body { padding: 0; margin: 0; }
+              @page { size: landscape; margin: 1cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-flex">
+            ${logoHtml}
+            <div class="header-info">
+              <h1 class="title-main">Laporan Rekapitulasi Hasil Kelulusan Peserta Kaderisasi</h1>
+              <h2 class="title-sub1">${branding.organisasi.toUpperCase()}</h2>
+              <h2 class="title-sub2">${branding.cabang.toUpperCase()}</h2>
+            </div>
+          </div>
+          
+          <div class="meta-info">
+            Kaderisasi: <span style="color: #0f172a;">Pelatihan Kepemimpinan Dasar (PKD)</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30px; text-align: center;">No</th>
+                <th>Nama Lengkap</th>
+                ${sesiHeadersHtml}
+                <th style="text-align: center; width: 60px;">Hasil</th>
+                <th style="text-align: center; width: 60px;">Persentase</th>
+                <th style="text-align: center; width: 60px;">Izin / Menit</th>
+                <th style="text-align: center; width: 100px;">Evaluasi AI</th>
+                <th style="width: 120px;">No. Sertifikat</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 35px; border-top: 1px solid #cbd5e1; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #64748b; font-family: monospace; font-weight: bold;">
+            <div>VALIDASI SISTEM: HASIL REKAPITULASI KELULUSAN SAH MELALUI ${branding.appName.toUpperCase()}</div>
+            <div>OPERATOR CETAK: ${currentUserName.toUpperCase()} &nbsp;|&nbsp; WAKTU CETAK: ${(() => {
+              const d = new Date();
+              const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+              return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.toTimeString().split(' ')[0]} WIB`;
+            })()}</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-6">
       
@@ -592,39 +749,49 @@ export default function KelulusanTab({
           
           <div className="flex justify-end space-x-2 mt-4 pt-2 border-t border-slate-50 dark:border-navy-850">
             {canRekap && (
-              <button
-                onClick={() => {
-                  let headers = ['Nama Kader', 'Delegasi PAC', 'Hadir Sesi', 'Lateness Percent', 'Post Test', 'Praktik', 'Izin Menit', 'Rekomendasi AI Kelulusan'];
-                  let rows = peserta.map(p => {
-                    const presentCount = presensi.filter(pr => pr.id === p.id).length;
-                    return [
-                      p.nama,
-                      p.utusan,
-                      `${presentCount} Sesi`,
-                      `${Math.round((presentCount / sesi.length) * 100)}%`,
-                      p.nilai_post_test,
-                      p.nilai_praktik,
-                      p.izin_menit || 0,
-                      p.status_kelulusan
-                    ];
-                  });
+              <>
+                <button
+                  onClick={handlePrintKelulusan}
+                  className="bg-slate-50 dark:bg-navy-950 hover:bg-slate-100 dark:hover:bg-navy-900 text-slate-700 dark:text-white border border-slate-200 dark:border-navy-850 font-bold px-4 py-2.5 rounded-xl text-[10px] flex items-center space-x-1.5 transition active:scale-[0.98]"
+                >
+                  <Printer className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Cetak Laporan Kelulusan</span>
+                </button>
 
-                  let tsvContent = "data:text/xls;charset=utf-8,\uFEFF"
-                    + [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
+                <button
+                  onClick={() => {
+                    let headers = ['Nama Kader', 'Delegasi PAC', 'Hadir Sesi', 'Lateness Percent', 'Post Test', 'Praktik', 'Izin Menit', 'Rekomendasi AI Kelulusan'];
+                    let rows = peserta.map(p => {
+                      const presentCount = presensi.filter(pr => pr.id === p.id).length;
+                      return [
+                        p.nama,
+                        p.utusan,
+                        `${presentCount} Sesi`,
+                        `${Math.round((presentCount / sesi.length) * 100)}%`,
+                        p.nilai_post_test,
+                        p.nilai_praktik,
+                        p.izin_menit || 0,
+                        p.status_kelulusan
+                      ];
+                    });
 
-                  const uri = encodeURI(tsvContent);
-                  const link = document.createElement("a");
-                  link.setAttribute("href", uri);
-                  link.setAttribute("download", "Laporan_Akurasi_Kelulusan_Kader.xls");
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }}
-                className="bg-slate-50 dark:bg-navy-950 hover:bg-slate-100 dark:hover:bg-navy-900 text-slate-700 dark:text-white border border-slate-200 dark:border-navy-850 font-bold px-4 py-2.5 rounded-xl text-[10px] flex items-center space-x-1.5 transition active:scale-[0.98]"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Ekspor Laporan Excel</span>
-              </button>
+                    let tsvContent = "data:text/xls;charset=utf-8,\uFEFF"
+                      + [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
+
+                    const uri = encodeURI(tsvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", uri);
+                    link.setAttribute("download", "Laporan_Akurasi_Kelulusan_Kader.xls");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="bg-slate-50 dark:bg-navy-950 hover:bg-slate-100 dark:hover:bg-navy-900 text-slate-700 dark:text-white border border-slate-200 dark:border-navy-850 font-bold px-4 py-2.5 rounded-xl text-[10px] flex items-center space-x-1.5 transition active:scale-[0.98]"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Ekspor Laporan Excel</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -653,31 +820,30 @@ export default function KelulusanTab({
 
         {/* Scrollable table */}
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse table-auto min-w-[1100px]">
+          <table className="w-full text-left border-collapse table-auto min-w-[1200px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-500 font-extrabold text-[9px] uppercase tracking-widest border-b border-slate-200 dark:border-navy-850">
-                <th className="p-3 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 w-44 shadow-[3px_0_10px_-3px_rgba(0,0,0,0.06)]">Nama Lengkap</th>
-                <th className="p-3 w-32 border-l dark:border-navy-850">PAC / UTUSAN</th>
+                <th className="p-3 text-center w-12 sticky left-0 bg-slate-50 dark:bg-slate-950 z-20">NO</th>
+                <th className="p-3 sticky left-12 bg-slate-50 dark:bg-slate-950 z-10 w-48 shadow-[3px_0_10px_-3px_rgba(0,0,0,0.06)] border-l dark:border-navy-850">Nama Lengkap</th>
                 
                 {/* Dynamically render Sesi names */}
                 {sortedSesi.map(s => (
-                  <th key={s.num} className="p-2 text-center w-24 border-l dark:border-navy-850 text-[8px]" title={s.materi}>
-                    S{s.num} ({s.duration}m)
+                  <th key={s.num} className="p-2 text-center w-28 border-l dark:border-navy-850 text-[8px] leading-tight" title={s.materi}>
+                    <div className="font-extrabold line-clamp-2 max-w-[100px] mx-auto uppercase">{s.materi}</div>
+                    <div className="font-semibold text-slate-400 dark:text-slate-500 mt-0.5 text-[7px] font-mono">({s.duration}M)</div>
                   </th>
                 ))}
 
-                <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">Hadir (m)</th>
-                <th className="p-3 text-center w-16 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white">% Pres</th>
-                <th className="p-3 text-center w-16">Post-Test</th>
-                <th className="p-3 text-center w-16">Praktik</th>
-                <th className="p-3 text-center w-16">Keaktifan</th>
-                <th className="p-3 text-center w-20">Evaluasi AI</th>
-                <th className="p-3 w-36">No. Sertifikat</th>
-                <th className="p-3 text-center w-24 sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-3px_0_10px_-3px_rgba(0,0,0,0.06)]">Aksi</th>
+                <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">HASIL</th>
+                <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">PERSENTASE</th>
+                <th className="p-3 text-center w-20 border-l dark:border-navy-850">IZIN / MENIT</th>
+                <th className="p-3 text-center w-24 border-l dark:border-navy-850">EVALUASI AI</th>
+                <th className="p-3 w-36 border-l dark:border-navy-850">NO. SERTIFIKAT</th>
+                <th className="p-3 text-center w-24 sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-3px_0_10px_-3px_rgba(0,0,0,0.06)] border-l dark:border-navy-850">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-150 dark:divide-navy-850 text-xs text-slate-650 dark:text-slate-350">
-              {filteredPeserta.map(p => {
+              {filteredPeserta.map((p, idx) => {
                 const presentSesiNums = presensi.filter(pr => pr.id === p.id).map(pr => pr.sesi);
                 
                 let attendedMinutes = 0;
@@ -692,13 +858,15 @@ export default function KelulusanTab({
                 return (
                   <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/10 transition align-middle">
                     
-                    {/* Name column */}
-                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 shadow-[3px_0_10px_-3px_rgba(0,0,0,0.06)] font-bold text-slate-800 dark:text-white uppercase truncate max-w-[160px]">
-                      {p.nama}
+                    {/* NO Column */}
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 w-12 text-center font-mono font-bold text-[10px] text-slate-400 dark:text-slate-500">
+                      {idx + 1}
                     </td>
 
-                    <td className="p-3 font-bold text-slate-450 dark:text-slate-500 uppercase text-[10px] border-l dark:border-navy-850">
-                      PAC {p.utusan}
+                    {/* Name column */}
+                    <td className="p-3 sticky left-12 bg-white dark:bg-slate-900 z-10 shadow-[3px_0_10px_-3px_rgba(0,0,0,0.06)] font-bold text-slate-800 dark:text-white uppercase truncate max-w-[160px] border-l dark:border-navy-850">
+                      <div>{p.nama}</div>
+                      <div className="text-[8px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">PAC {p.utusan}</div>
                     </td>
 
                     {/* Sesi details */}
@@ -716,23 +884,19 @@ export default function KelulusanTab({
                       );
                     })}
 
-                    {/* Attendance totals */}
+                    {/* Attendance totals (HASIL) */}
                     <td className="p-3 text-center font-black font-mono text-slate-850 dark:text-white bg-slate-50 dark:bg-slate-950 border-l dark:border-navy-850">
-                      {attendedMinutes}
+                      {attendedMinutes} m
                     </td>
-                    <td className={`p-3 text-center font-mono font-black ${pct >= minPres ? 'text-emerald-500' : 'text-rose-500'} bg-slate-50 dark:bg-slate-950`}>
+
+                    {/* PERSENTASE */}
+                    <td className={`p-3 text-center font-mono font-black ${pct >= minPres ? 'text-emerald-500' : 'text-rose-500'} bg-slate-50 dark:bg-slate-950 border-l dark:border-navy-850`}>
                       {pct}%
                     </td>
 
-                    {/* Scores */}
+                    {/* IZIN / MENIT */}
                     <td className="p-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300 border-l dark:border-navy-850">
-                      {p.nilai_post_test}
-                    </td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                      {p.nilai_praktik}
-                    </td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                      {p.nilai_keaktifan}
+                      {p.izin_menit || 0} m
                     </td>
 
                     {/* Evaluasi AI */}
@@ -759,7 +923,7 @@ export default function KelulusanTab({
                     </td>
 
                     {/* Sertifikat card */}
-                    <td className="p-3 font-mono text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[120px]" title={p.no_sertifikat}>
+                    <td className="p-3 font-mono text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[120px] border-l dark:border-navy-850" title={p.no_sertifikat}>
                       {p.no_sertifikat || '-'}
                     </td>
 
