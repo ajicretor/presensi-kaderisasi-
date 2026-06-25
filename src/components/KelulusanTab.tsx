@@ -10,7 +10,8 @@ import {
   X,
   Printer,
   Upload,
-  Search
+  Search,
+  FileText
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Peserta, Sesi, Presensi, Branding } from '../types';
@@ -80,6 +81,72 @@ export default function KelulusanTab({
   const [customStempel, setCustomStempel] = useState<string | null>(null);
   const [customTtdKetua, setCustomTtdKetua] = useState<string | null>(null);
   const [customTtdSekr, setCustomTtdSekr] = useState<string | null>(null);
+
+  // Modal SK Penetapan Kelulusan State
+  const [isSkOpen, setIsSkOpen] = useState(false);
+  const [skNomor, setSkNomor] = useState('029 /PC-IX-22/SK-01/VI/2026');
+  const [skAngkatan, setSkAngkatan] = useState('XXIX');
+  const [skKecamatan, setSkKecamatan] = useState('Cileungsi');
+  const [skTanggalRapat, setSkTanggalRapat] = useState('27 Juni 2026');
+  
+  const [skMenimbangA, setSkMenimbangA] = useState('Bahwa Dewan Instruktur Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor menganggap penting adanya surat penetapan kelulusan peserta Pelatihan Kepemimpinan Dasar (PKD) Angkatan XXIX yang dilaksanakan oleh Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
+  const [skMenimbangB, setSkMenimbangB] = useState('Bahwa untuk menjamin kepastian status kelulusan kepesertaan Kaderisasi Pelatihan Kepemimpinan Dasar (PKD) sebagai bagian dari Pelaksanaan amanat organisasi');
+  
+  const [skMengingatA, setSkMengingatA] = useState('Keputusan Konferensi besar Pimpinan Pusat Gerakan Pemuda Ansor Nomor 08/KONBES-XXVII/X/2024 tentang Sistem Kaderisasi');
+  const [skMengingatB, setSkMengingatB] = useState('Peraturan Organisasi (PO) Sistem Kaderisasi Pasal 63 Ayat 2');
+  
+  const [skMemperhatikanA, setSkMemperhatikanA] = useState('Rekapitulasi absensi kehadiran peserta pada setiap materi wajib yang telah ditentukan sistem kaderisasi');
+  const [skMemperhatikanB, setSkMemperhatikanB] = useState('Rapat Dewan Instruktur Cabang mengenai kelayakan kelulusan peserta PKD Angkatan XXIX Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor pada tanggal 27 Juni 2026');
+  const [skMemperhatikanC, setSkMemperhatikanC] = useState('Mendengarkan saran dan masukan dari Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
+
+  const [skDitetapkan, setSkDitetapkan] = useState('Di Cileungsi');
+  const [skTanggalHijriah, setSkTanggalHijriah] = useState('12 Muharrom 1448H');
+  const [skTanggalMasehi, setSkTanggalMasehi] = useState('28 Juni 2026 M');
+  
+  const [skKepalaSekolah, setSkKepalaSekolah] = useState('HAMDANI M MALIK, S.E');
+  const [skKoordinator, setSkKoordinator] = useState('SEPTA AJI., S.KOM');
+  const [skKetua, setSkKetua] = useState('DOMIRI A GHAZALI, S.H');
+
+  const [skTextTotal, setSkTextTotal] = useState('');
+  const [skTextLulus, setSkTextLulus] = useState('');
+  const [skTextTidakLulus, setSkTextTidakLulus] = useState('');
+
+  const [skOperator, setSkOperator] = useState('');
+  const [skWaktuCetak, setSkWaktuCetak] = useState('');
+  const [useQrSignatures, setUseQrSignatures] = useState(true);
+  const [useDocumentValidation, setUseDocumentValidation] = useState(true);
+
+  function kekata(n: number): string {
+    const words = ["Nol", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+    if (n < 12) return words[n];
+    if (n < 20) return words[n - 10] + " Belas";
+    if (n < 100) return words[Math.floor(n / 10)] + " Puluh" + (n % 10 !== 0 ? " " + kekata(n % 10) : "");
+    if (n < 200) return "Seratus " + kekata(n - 100);
+    if (n < 1000) return kekata(Math.floor(n / 100)) + " Ratus" + (n % 100 !== 0 ? " " + kekata(n % 100) : "");
+    return String(n);
+  }
+
+  useEffect(() => {
+    if (isSkOpen) {
+      const tot = peserta.length;
+      const lls = peserta.filter(p => p.status_kelulusan === 'LULUS' || p.status_kelulusan === 'LULUS BERSYARAT').length;
+      const tdk = peserta.filter(p => p.status_kelulusan === 'TIDAK LULUS').length;
+      
+      setSkTextTotal(`${tot} ( ${kekata(tot)} )`);
+      setSkTextLulus(`${lls} ( ${kekata(lls)} )`);
+      setSkTextTidakLulus(`${tdk} ( ${kekata(tdk)} )`);
+
+      if (!skOperator) {
+        setSkOperator(currentUserName || 'Operator Admin');
+      }
+
+      const now = new Date();
+      const optionsDate: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+      const formattedDate = now.toLocaleDateString('id-ID', optionsDate);
+      const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+      setSkWaktuCetak(`${formattedDate}, ${formattedTime}`);
+    }
+  }, [isSkOpen, peserta, currentUserName]);
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
@@ -546,6 +613,732 @@ export default function KelulusanTab({
     }
   };
 
+  const handlePrintSK = async () => {
+    // Generate QR Codes
+    let qrKepalaSekolahImg = '';
+    let qrKoordinatorImg = '';
+    let qrKetuaImg = '';
+    let qrValidationImg = '';
+
+    try {
+      if (useQrSignatures) {
+        qrKepalaSekolahImg = await QRCode.toDataURL(`DEWAN INSTRUKTUR PC GP ANSOR KAB BOGOR\nJabatan: Kepala Sekolah Kaderisasi\nNama: ${skKepalaSekolah}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, { margin: 1, width: 120 });
+        qrKoordinatorImg = await QRCode.toDataURL(`DEWAN INSTRUKTUR PC GP ANSOR KAB BOGOR\nJabatan: Koordinator Instruktur Cabang\nNama: ${skKoordinator}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, { margin: 1, width: 120 });
+        qrKetuaImg = await QRCode.toDataURL(`PIMPINAN CABANG GERAKAN PEMUDA ANSOR KAB BOGOR\nJabatan: Ketua\nNama: ${skKetua}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, { margin: 1, width: 120 });
+      }
+      if (useDocumentValidation) {
+        const valText = `DOKUMEN RESMI TERVERIFIKASI\nSK Penetapan Kelulusan PKD Angkatan ${skAngkatan}\nNomor: ${skNomor}\nKecamatan: ${skKecamatan}\nOperator Cetak: ${skOperator}\nWaktu Cetak: ${skWaktuCetak}\nStatus: SAH & TERCATAT`;
+        qrValidationImg = await QRCode.toDataURL(valText, { margin: 1, width: 120 });
+      }
+    } catch (err) {
+      console.error('Error generating QR codes for SK', err);
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let logoHtml = '';
+    if (branding && branding.logo && (typeof branding.logo === 'string')) {
+      if (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) {
+        logoHtml = `<div class="logo-container"><div>${branding.logo}</div></div>`;
+      } else {
+        logoHtml = `<div class="logo-container"><img src="${branding.logo}" alt="Logo" /></div>`;
+      }
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Surat_Ketetapan_Kelulusan_PKD_${skAngkatan}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+            
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+              color: #000000;
+              background-color: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            /* Page styles */
+            .page {
+              width: 210mm;
+              height: 295mm;
+              background-color: #ffffff;
+              box-sizing: border-box;
+              padding: 15mm 20mm;
+              position: relative;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              overflow: hidden;
+            }
+
+            /* Kop Surat Styles */
+            .header-flex {
+              display: flex;
+              align-items: center;
+              gap: 20px;
+              border-bottom: 3.5px double #000000;
+              padding-bottom: 12px;
+              margin-bottom: 18px;
+            }
+            .logo-container {
+              width: 75px;
+              height: 75px;
+              min-width: 75px;
+              min-height: 75px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              box-sizing: border-box;
+            }
+            .logo-container img {
+              width: 70px;
+              height: 70px;
+              object-fit: contain;
+            }
+            .logo-container svg {
+              width: 70px;
+              height: 70px;
+            }
+            .logo-container div {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            
+            .header-info {
+              flex-grow: 1;
+              text-align: center;
+            }
+            .title-main {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-size: 21px;
+              font-weight: 800;
+              text-transform: uppercase;
+              margin: 0;
+              color: #000000;
+              letter-spacing: 0.01em;
+              line-height: 1.1;
+            }
+            .title-sub1 {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-size: 20px;
+              font-weight: 800;
+              text-transform: uppercase;
+              margin: 4px 0 0 0;
+              color: #000000;
+              letter-spacing: 0.01em;
+              line-height: 1.1;
+            }
+            .title-sub2 {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-size: 22px;
+              font-weight: 900;
+              text-transform: uppercase;
+              margin: 3px 0 0 0;
+              color: #000000;
+              letter-spacing: 0.03em;
+              line-height: 1.1;
+            }
+            .address-info {
+              font-family: 'Inter', sans-serif;
+              font-size: 9.5px;
+              font-weight: 500;
+              margin: 6px 0 0 0;
+              color: #1e293b;
+            }
+            .links-info {
+              font-family: 'Inter', sans-serif;
+              font-size: 9.5px;
+              font-weight: 500;
+              margin: 2px 0 0 0;
+              color: #1e293b;
+            }
+            .links-info a {
+              color: #0284c7;
+              text-decoration: none;
+            }
+
+            /* Document structure styles */
+            .doc-title {
+              text-align: center;
+              font-size: 13px;
+              font-weight: 800;
+              text-decoration: underline;
+              text-transform: uppercase;
+              margin-top: 10px;
+              margin-bottom: 2px;
+              letter-spacing: 0.05em;
+            }
+            .doc-number {
+              text-align: center;
+              font-size: 12px;
+              font-weight: 600;
+              margin-bottom: 12px;
+            }
+            .doc-about-label {
+              text-align: center;
+              font-size: 11px;
+              font-weight: 700;
+              margin-bottom: 2px;
+              text-transform: uppercase;
+            }
+            .doc-about-title {
+              text-align: center;
+              font-size: 11px;
+              font-weight: 800;
+              text-transform: uppercase;
+              max-width: 85%;
+              margin: 0 auto 18px auto;
+              line-height: 1.4;
+            }
+
+            .bismillah {
+              font-family: 'Playfair Display', Georgia, serif;
+              font-style: italic;
+              font-weight: 700;
+              font-size: 13px;
+              margin-bottom: 4px;
+            }
+            .opening-text {
+              font-weight: 700;
+              font-size: 11.5px;
+              margin-bottom: 14px;
+            }
+
+            /* Table-like row layout for formal documents */
+            .doc-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 12px;
+              font-size: 11px;
+              line-height: 1.45;
+            }
+            .doc-table td {
+              padding: 4px 0;
+              vertical-align: top;
+            }
+            .col-label {
+              font-weight: 800;
+              width: 120px;
+              text-transform: uppercase;
+              letter-spacing: 0.02em;
+            }
+            .col-separator {
+              width: 15px;
+              text-align: center;
+              font-weight: bold;
+            }
+            .col-content {
+              text-align: justify;
+            }
+            .bullet-list {
+              margin: 0;
+              padding: 0;
+              list-style-type: none;
+            }
+            .bullet-list li {
+              position: relative;
+              padding-left: 18px;
+              margin-bottom: 6px;
+            }
+            .bullet-list li .bullet-char {
+              position: absolute;
+              left: 0;
+              font-weight: bold;
+            }
+
+            .centered-divider {
+              text-align: center;
+              font-weight: 800;
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              margin: 12px 0;
+            }
+
+            /* Stats block for page 1 bottom */
+            .stats-container {
+              margin-top: 6px;
+              margin-left: 20px;
+              font-family: 'Inter', sans-serif;
+              font-size: 11px;
+            }
+            .stats-row {
+              display: flex;
+              margin-bottom: 4px;
+            }
+            .stats-label {
+              width: 110px;
+              font-weight: 600;
+            }
+            .stats-dots {
+              width: 15px;
+              font-weight: bold;
+            }
+            .stats-val {
+              font-weight: 700;
+            }
+
+            /* Page 2 signatures styles */
+            .meta-date {
+              margin-left: auto;
+              width: 250px;
+              font-size: 11px;
+              margin-top: 15px;
+              margin-bottom: 15px;
+              line-height: 1.4;
+            }
+            .meta-date table {
+              width: 100%;
+            }
+            .meta-date td {
+              padding: 1px 0;
+            }
+
+            .instruktur-title {
+              text-align: center;
+              font-weight: 800;
+              font-size: 11.5px;
+              text-transform: uppercase;
+              margin-bottom: 20px;
+              line-height: 1.35;
+            }
+
+            .sig-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 20px;
+              margin-bottom: 30px;
+              font-size: 11.5px;
+              text-align: center;
+            }
+            .sig-col {
+              width: 200px;
+            }
+            .sig-name {
+              font-weight: 800;
+              text-decoration: underline;
+              text-transform: uppercase;
+              margin-top: 65px;
+            }
+            .sig-name-line {
+              font-weight: 800;
+              text-decoration: underline;
+              text-transform: uppercase;
+              margin-top: 4px;
+            }
+
+            .validation-badge {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              border: 1.5px dashed #10b981;
+              background-color: #f0fdf4;
+              padding: 10px 14px;
+              border-radius: 8px;
+              max-width: 380px;
+              font-size: 9.5px;
+              line-height: 1.4;
+              color: #111827;
+              margin: 15px auto 0 auto;
+              text-align: left;
+            }
+            .validation-qr {
+              width: 65px;
+              height: 65px;
+              background: #ffffff;
+              padding: 3px;
+              border: 1px solid #e5e7eb;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-sizing: border-box;
+            }
+            .validation-qr img {
+              width: 58px;
+              height: 58px;
+              object-fit: contain;
+            }
+            .validation-details {
+              flex: 1;
+              text-align: left;
+            }
+            .validation-title {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 800;
+              color: #047857;
+              font-size: 9px;
+              letter-spacing: 0.05em;
+              margin-bottom: 4px;
+              border-bottom: 1.5px solid #34d399;
+              padding-bottom: 3px;
+              text-transform: uppercase;
+            }
+            .validation-text {
+              margin: 2px 0;
+            }
+
+            .sig-row-mengetahui {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+              font-size: 11.5px;
+              margin-top: 15px;
+            }
+            .sig-mengetahui-title {
+              font-weight: 700;
+              text-transform: uppercase;
+              line-height: 1.35;
+            }
+
+            /* Elegant green footer matching the image */
+            .footer-container {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 48px;
+              background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 0 25px;
+              color: #ffffff;
+              font-family: 'Inter', sans-serif;
+              font-size: 9.5px;
+              font-weight: 700;
+              border-top: 1px solid #34d399;
+            }
+            .footer-left {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .social-icons {
+              display: flex;
+              gap: 4px;
+            }
+            .social-icon {
+              width: 16px;
+              height: 16px;
+              background-color: #ffffff;
+              color: #059669;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 8.5px;
+              font-weight: 900;
+            }
+            .social-handle {
+              letter-spacing: 0.02em;
+            }
+            .footer-badge {
+              background-color: #10b981;
+              border: 1px solid rgba(255, 255, 255, 0.4);
+              padding: 3px 8px;
+              border-radius: 5px;
+              font-size: 9px;
+              margin-left: 10px;
+            }
+            
+            /* Styled diagonal stripe on right */
+            .footer-stripe {
+              position: absolute;
+              right: 0;
+              bottom: 0;
+              height: 100%;
+              width: 80px;
+              background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+              clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
+              border-left: 3px solid #34d399;
+            }
+
+            @media print {
+              body {
+                background-color: #ffffff;
+                margin: 0;
+                padding: 0;
+              }
+              .page {
+                box-shadow: none;
+                margin: 0;
+                page-break-after: always;
+              }
+              .page:last-child {
+                page-break-after: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          
+          <!-- ================= PAGE 1 ================= -->
+          <div class="page">
+            <div class="content-body">
+              
+              <!-- Kop Surat -->
+              <div class="header-flex">
+                \${logoHtml}
+                <div class="header-info">
+                  <h1 class="title-main">PIMPINAN CABANG</h1>
+                  <h2 class="title-sub1">GERAKAN PEMUDA ANSOR</h2>
+                  <h2 class="title-sub2">KABUPATEN BOGOR</h2>
+                  <p class="address-info">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</p>
+                  <p class="links-info">Website : <a href="https://ansorbogoronline.or.id" target="_blank">ansorbogoronline.or.id</a>, | email : <a href="mailto:ansorbogoronline@gmail.com">ansorbogoronline@gmail.com</a>.</p>
+                </div>
+              </div>
+
+              <!-- Judul SK -->
+              <div class="doc-title">SURAT KEPUTUSAN PENETAPAN KELULUSAN</div>
+              <div class="doc-number">Nomor : \${skNomor}</div>
+              
+              <div class="doc-about-label">T e n t a n g</div>
+              <div class="doc-about-title">
+                PENETAPAN KELULUSAN PESERTA<br/>
+                PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN \${skAngkatan}<br/>
+                PIMPINAN CABANG GERAKAN PEMUDA ANSOR<br/>
+                KABUPATEN BOGOR
+              </div>
+
+              <div class="bismillah">Bismillâhirrahmânirrahîm,</div>
+              <div class="opening-text">Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor,</div>
+
+              <!-- MENIMBANG, MENGINGAT, MEMPERHATIKAN -->
+              <table class="doc-table">
+                <tr>
+                  <td class="col-label">MENIMBANG</td>
+                  <td class="col-separator">:</td>
+                  <td class="col-content">
+                    <ul class="bullet-list">
+                      <li>
+                        <span class="bullet-char">a.</span>
+                        \${skMenimbangA}
+                      </li>
+                      <li>
+                        <span class="bullet-char">b.</span>
+                        \${skMenimbangB}
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-label">MENGINGAT</td>
+                  <td class="col-separator">:</td>
+                  <td class="col-content">
+                    <ul class="bullet-list">
+                      <li>
+                        <span class="bullet-char">a.</span>
+                        \${skMengingatA}
+                      </li>
+                      <li>
+                        <span class="bullet-char">b.</span>
+                        \${skMengingatB}
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-label">MEMPERHATIKAN</td>
+                  <td class="col-separator">:</td>
+                  <td class="col-content">
+                    <ul class="bullet-list">
+                      <li>
+                        <span class="bullet-char">a.</span>
+                        \${skMemperhatikanA}
+                      </li>
+                      <li>
+                        <span class="bullet-char">b.</span>
+                        \${skMemperhatikanB}
+                      </li>
+                      <li>
+                        <span class="bullet-char">c.</span>
+                        \${skMemperhatikanC}
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <div class="centered-divider">MEMUTUSKAN</div>
+
+              <table class="doc-table">
+                <tr>
+                  <td class="col-label">MENETAPKAN</td>
+                  <td class="col-separator">:</td>
+                  <td class="col-content">
+                    <strong>1. Menyatakan Kelulusan Sebagai Berikut :</strong>
+                    <div class="stats-container">
+                      <div class="stats-row">
+                        <span class="stats-label">Total Peserta</span>
+                        <span class="stats-dots">:</span>
+                        <span class="stats-val">\${skTextTotal}</span>
+                      </div>
+                      <div class="stats-row">
+                        <span class="stats-label">Lulus</span>
+                        <span class="stats-dots">:</span>
+                        <span class="stats-val">\${skTextLulus}</span>
+                      </div>
+                      <div class="stats-row">
+                        <span class="stats-label">Tidak Lulus</span>
+                        <span class="stats-dots">:</span>
+                        <span class="stats-val">\${skTextTidakLulus}</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+            </div>
+
+            <!-- Page 1 Footer -->
+            <div class="footer-container">
+              <div class="footer-left">
+                <div class="social-icons">
+                  <div class="social-icon">▶</div>
+                  <div class="social-icon">f</div>
+                  <div class="social-icon">📷</div>
+                  <div class="social-icon">𝕏</div>
+                </div>
+                <span class="social-handle">ansorbogoronline</span>
+                <span class="footer-badge">www.ansorbogoronline.or.id</span>
+              </div>
+              <div class="footer-stripe"></div>
+            </div>
+          </div>
+
+          <!-- ================= PAGE 2 ================= -->
+          <div class="page">
+            <div class="content-body">
+              
+              <!-- Kop Surat -->
+              <div class="header-flex">
+                \${logoHtml}
+                <div class="header-info">
+                  <h1 class="title-main">PIMPINAN CABANG</h1>
+                  <h2 class="title-sub1">GERAKAN PEMUDA ANSOR</h2>
+                  <h2 class="title-sub2">KABUPATEN BOGOR</h2>
+                  <p class="address-info">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</p>
+                  <p class="links-info">Website : <a href="https://ansorbogoronline.or.id" target="_blank">ansorbogoronline.or.id</a>, | email : <a href="mailto:ansorbogoronline@gmail.com">ansorbogoronline@gmail.com</a>.</p>
+                </div>
+              </div>
+
+              <!-- Menetapkan lanjutan points 2 and 3 -->
+              <table class="doc-table" style="margin-top: 20px;">
+                <tr>
+                  <td class="col-label" style="opacity: 0;">MENETAPKAN</td>
+                  <td class="col-separator" style="opacity: 0;">:</td>
+                  <td class="col-content">
+                    <ul class="bullet-list" style="margin-top: -6px;">
+                      <li style="padding-left: 18px; margin-bottom: 12px;">
+                        <span class="bullet-char">2.</span>
+                        Bahwa Peserta yang lulus berhak mendapatkan Sertifikat PKD setelah melaksanakan rencana tindak lanjut yang sudah ditentukan.
+                      </li>
+                      <li style="padding-left: 18px;">
+                        <span class="bullet-char">3.</span>
+                        Daftar Nama Hasil Kelulusan Kaderisasi menjadi bagian tidak terpisahkan dari surat ketetapan ini
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Ditetapkan di dan Tanggal -->
+              <div class="meta-date">
+                <table>
+                  <tr>
+                    <td style="width: 90px; font-weight: bold;">Ditetapkan</td>
+                    <td style="width: 15px; text-align: center; font-weight: bold;">:</td>
+                    <td>\${skDitetapkan}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight: bold;">Tanggal</td>
+                    <td style="text-align: center; font-weight: bold;">:</td>
+                    <td style="text-decoration: underline; font-weight: 700;">\${skTanggalHijriah}</td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td style="text-align: center; font-weight: bold;">:</td>
+                    <td style="text-decoration: underline; font-weight: 700;">\${skTanggalMasehi}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Dewan Instruktur PC GP Ansor Kab Bogor -->
+              <div class="instruktur-title">
+                DEWAN INSTRUKTUR PIMPINAN CABANG<br/>
+                GERAKAN PEMUDA ANSOR<br/>
+                KABUPATEN BOGOR
+              </div>
+
+              <!-- Signature Row 1 -->
+              <div class="sig-row">
+                <div class="sig-col" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 140px;">
+                  <div style="font-weight: 700; text-align: center;">Kepala Sekolah Kaderisasi,</div>
+                  \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKepalaSekolahImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 60px;"></div>'}
+                  <div class="sig-name-line">\${skKepalaSekolah}</div>
+                </div>
+                <div class="sig-col" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 140px;">
+                  <div style="font-weight: 700; text-align: center;">Koordinator Instruktur Cabang,</div>
+                  \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKoordinatorImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 60px;"></div>'}
+                  <div class="sig-name-line">\${skKoordinator}</div>
+                </div>
+              </div>
+
+              <!-- Signature Row 2 (Mengetahui) -->
+              <div class="sig-row-mengetahui" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 10px;">
+                <div class="sig-mengetahui-title">Mengetahui</div>
+                <div class="sig-mengetahui-title" style="font-weight: 800;">PIMPINAN CABANG GERAKAN PEMUDA ANSOR</div>
+                <div class="sig-mengetahui-title" style="font-weight: 800; margin-bottom: 3px;">KABUPATEN BOGOR</div>
+                <div style="font-weight: 700; margin-bottom: 3px;">Ketua,</div>
+                \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKetuaImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 55px;"></div>'}
+                <div class="sig-name-line">\${skKetua}</div>
+              </div>
+
+              <!-- Verification & Validation Stamp -->
+              \${useDocumentValidation ? ' <div class="validation-badge"> <div class="validation-qr"> <img src="' + qrValidationImg + '" alt="Validation QR" /> </div> <div class="validation-details"> <div class="validation-title">VALIDASI SISTEM KADERISASI</div> <div class="validation-text"><strong>Operator Cetak:</strong> \${skOperator}</div> <div class="validation-text"><strong>Waktu Cetak:</strong> \${skWaktuCetak}</div> <div class="validation-text"><strong>Status Dokumen:</strong> SAH &amp; TERVERIFIKASI DI DATABASE PC GP ANSOR KABUPATEN BOGOR</div> </div> </div> ' : ''}
+
+            </div>
+
+            <!-- Page 2 Footer -->
+            <div class="footer-container">
+              <div class="footer-left">
+                <div class="social-icons">
+                  <div class="social-icon">▶</div>
+                  <div class="social-icon">f</div>
+                  <div class="social-icon">📷</div>
+                  <div class="social-icon">𝕏</div>
+                </div>
+                <span class="social-handle">ansorbogoronline</span>
+                <span class="footer-badge">www.ansorbogoronline.or.id</span>
+              </div>
+              <div class="footer-stripe"></div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setIsSkOpen(false);
+  };
+
   const handlePrintKelulusan = () => {
     if (!canRekap) return;
     const printWindow = window.open('', '_blank');
@@ -769,6 +1562,14 @@ export default function KelulusanTab({
           <div className="flex justify-end space-x-2 mt-4 pt-2 border-t border-slate-50 dark:border-navy-850">
             {canRekap && (
               <>
+                <button
+                  onClick={() => setIsSkOpen(true)}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-[10px] flex items-center space-x-1.5 transition active:scale-[0.98] shadow-sm uppercase tracking-wider"
+                >
+                  <FileText className="w-3.5 h-3.5 text-white" />
+                  <span>Cetak SK Kelulusan</span>
+                </button>
+
                 <button
                   onClick={handlePrintKelulusan}
                   className="bg-slate-50 dark:bg-navy-950 hover:bg-slate-100 dark:hover:bg-navy-900 text-slate-700 dark:text-white border border-slate-200 dark:border-navy-850 font-bold px-4 py-2.5 rounded-xl text-[10px] flex items-center space-x-1.5 transition active:scale-[0.98]"
@@ -1414,6 +2215,662 @@ export default function KelulusanTab({
                 </div>
               </div>
 
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP: MODAL EDIT & CETAK SURAT KETETAPAN (SK) KELULUSAN */}
+      {isSkOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-6xl h-[90vh] shadow-2xl border border-slate-200 dark:border-navy-800 overflow-hidden transform transition duration-150 scale-100 flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-6 py-4.5 flex justify-between items-center shrink-0 border-b dark:border-navy-850">
+              <div className="flex items-center space-x-2.5">
+                <FileText className="w-5 h-5 text-emerald-400 animate-pulse" />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">Atur & Cetak Surat Keputusan Kelulusan (SK)</h4>
+                  <p className="text-[10px] text-slate-400 font-medium">Format resmi Pimpinan Cabang GP Ansor Kabupaten Bogor</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSkOpen(false)}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+              
+              {/* Left pane: Editable fields */}
+              <div className="w-full md:w-1/2 p-6 overflow-y-auto border-r border-slate-150 dark:border-navy-850 space-y-6">
+                
+                {/* Section 1: Nomor & Angkatan */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">1. Identitas & Kop Surat</h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">NOMOR SK KELULUSAN</label>
+                      <input
+                        type="text"
+                        value={skNomor}
+                        onChange={(e) => setSkNomor(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">ANGKATAN PKD (ROMAWI)</label>
+                      <input
+                        type="text"
+                        value={skAngkatan}
+                        onChange={(e) => setSkAngkatan(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">KECAMATAN PELAKSANA</label>
+                      <input
+                        type="text"
+                        value={skKecamatan}
+                        onChange={(e) => setSkKecamatan(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TANGGAL RAPAT PLENO</label>
+                      <input
+                        type="text"
+                        value={skTanggalRapat}
+                        onChange={(e) => setSkTanggalRapat(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Menimbang */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">2. Konsideran - MENIMBANG</h5>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN A (URGENSI & PELAKSANA)</label>
+                    <textarea
+                      value={skMenimbangA}
+                      onChange={(e) => setSkMenimbangA(e.target.value)}
+                      rows={3}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN B (KEPASTIAN STATUS)</label>
+                    <textarea
+                      value={skMenimbangB}
+                      onChange={(e) => setSkMenimbangB(e.target.value)}
+                      rows={2}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 3: Mengingat */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">3. Konsideran - MENGINGAT</h5>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN A (SISTEM KADERISASI PP)</label>
+                    <textarea
+                      value={skMengingatA}
+                      onChange={(e) => setSkMengingatA(e.target.value)}
+                      rows={2}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN B (PERATURAN ORGANISASI PO)</label>
+                    <textarea
+                      value={skMengingatB}
+                      onChange={(e) => setSkMengingatB(e.target.value)}
+                      rows={2}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 4: Memperhatikan */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">4. Konsideran - MEMPERHATIKAN</h5>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN A (REKAPITULASI ABSENSI)</label>
+                    <textarea
+                      value={skMemperhatikanA}
+                      onChange={(e) => setSkMemperhatikanA(e.target.value)}
+                      rows={2}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN B (HASIL DEWAN INSTRUKTUR CABANG)</label>
+                    <textarea
+                      value={skMemperhatikanB}
+                      onChange={(e) => setSkMemperhatikanB(e.target.value)}
+                      rows={3}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">POIN C (SARAN & MASUKAN PAC)</label>
+                    <textarea
+                      value={skMemperhatikanC}
+                      onChange={(e) => setSkMemperhatikanC(e.target.value)}
+                      rows={2}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 5: Statistik Kelulusan (Customizable inputs) */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">5. Hasil Statistik Kelulusan</h5>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL PESERTA (ANGKAH & TERBILANG)</label>
+                    <input
+                      type="text"
+                      value={skTextTotal}
+                      onChange={(e) => setSkTextTotal(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL LULUS (ANGKAH & TERBILANG)</label>
+                    <input
+                      type="text"
+                      value={skTextLulus}
+                      onChange={(e) => setSkTextLulus(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL TIDAK LULUS (ANGKAH & TERBILANG)</label>
+                    <input
+                      type="text"
+                      value={skTextTidakLulus}
+                      onChange={(e) => setSkTextTidakLulus(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 6: Penandatangan & Tanggal Surat */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">6. Tanggal & Penandatangan</h5>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TEMPAT DITETAPKAN</label>
+                      <input
+                        type="text"
+                        value={skDitetapkan}
+                        onChange={(e) => setSkDitetapkan(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TANGGAL HIJRIAH</label>
+                      <input
+                        type="text"
+                        value={skTanggalHijriah}
+                        onChange={(e) => setSkTanggalHijriah(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TANGGAL MASEHI</label>
+                      <input
+                        type="text"
+                        value={skTanggalMasehi}
+                        onChange={(e) => setSkTanggalMasehi(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">KEPALA SEKOLAH KADERISASI</label>
+                    <input
+                      type="text"
+                      value={skKepalaSekolah}
+                      onChange={(e) => setSkKepalaSekolah(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">KOORDINATOR INSTRUKTUR CABANG</label>
+                    <input
+                      type="text"
+                      value={skKoordinator}
+                      onChange={(e) => setSkKoordinator(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">KETUA CABANG GP ANSOR</label>
+                    <input
+                      type="text"
+                      value={skKetua}
+                      onChange={(e) => setSkKetua(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 7: QR & Validasi */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">7. Tanda Tangan QR & Validasi Sistem</h5>
+                  
+                  <div className="flex flex-col space-y-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-navy-850">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useQrSignatures}
+                        onChange={(e) => setUseQrSignatures(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-navy-800 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900"
+                      />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Gunakan Tanda Tangan QR Code (Pengesahan)</span>
+                    </label>
+
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useDocumentValidation}
+                        onChange={(e) => setUseDocumentValidation(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-navy-800 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900"
+                      />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Aktifkan Validasi Keaslian Dokumen (User, Waktu & QR)</span>
+                    </label>
+                  </div>
+
+                  {useDocumentValidation && (
+                    <div className="grid grid-cols-2 gap-4 animate-fadeIn">
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">NAMA OPERATOR / USER</label>
+                        <input
+                          type="text"
+                          value={skOperator}
+                          onChange={(e) => setSkOperator(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                          placeholder="Nama Operator"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">WAKTU VERIFIKASI / CETAK</label>
+                        <input
+                          type="text"
+                          value={skWaktuCetak}
+                          onChange={(e) => setSkWaktuCetak(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500"
+                          placeholder="Waktu Cetak"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right pane: Interactive styled 2-page print layout preview */}
+              <div className="w-full md:w-1/2 bg-slate-100 dark:bg-slate-950 p-6 overflow-y-auto flex flex-col items-center space-y-8 select-none">
+                <h5 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest self-start">PRATINJAU DOKUMEN CETAK (2 HALAMAN)</h5>
+                
+                {/* Simulated Sheet Page 1 */}
+                <div className="w-[145mm] min-h-[205mm] bg-white border border-slate-200 dark:border-navy-800 shadow-xl p-6 relative flex flex-col justify-between text-[6px] text-slate-850 leading-normal">
+                  <div>
+                    {/* Simulated Header */}
+                    <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-3">
+                      <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-slate-100 border border-slate-200 rounded">
+                        <span className="text-[8px] text-emerald-600 font-extrabold">ANSOR</span>
+                      </div>
+                      <div className="flex-1 text-center font-bold">
+                        <div className="text-[7.5px] uppercase">PIMPINAN CABANG</div>
+                        <div className="text-[7.5px] uppercase">GERAKAN PEMUDA ANSOR</div>
+                        <div className="text-[8px] uppercase font-black text-emerald-600">KABUPATEN BOGOR</div>
+                        <div className="text-[4px] font-normal text-slate-500">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="text-center font-black underline uppercase text-[6px] mt-2 mb-0.5">SURAT KEPUTUSAN PENETAPAN KELULUSAN</div>
+                    <div className="text-center font-semibold text-[5.5px] mb-2">Nomor : {skNomor}</div>
+                    
+                    <div className="text-center font-bold uppercase text-[5px] mb-0.5">T e n t a n g</div>
+                    <div className="text-center font-black uppercase text-[5.5px] max-w-[85%] mx-auto mb-4 line-height-relaxed text-slate-900">
+                      PENETAPAN KELULUSAN PESERTA PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN {skAngkatan} PIMPINAN CABANG GERAKAN PEMUDA ANSOR KABUPATEN BOGOR
+                    </div>
+
+                    <div className="font-semibold italic mb-0.5">Bismillâhirrahmânirrahîm,</div>
+                    <div className="font-bold mb-2">Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor,</div>
+
+                    <table className="w-full text-[5.5px]">
+                      <tbody>
+                        <tr>
+                          <td className="w-16 font-extrabold align-top">MENIMBANG</td>
+                          <td className="w-2 text-center align-top">:</td>
+                          <td className="align-top pb-1.5 text-slate-700">
+                            a. {skMenimbangA.length > 120 ? skMenimbangA.substring(0, 120) + "..." : skMenimbangA}<br/>
+                            b. {skMenimbangB}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="font-extrabold align-top">MENGINGAT</td>
+                          <td className="text-center align-top">:</td>
+                          <td className="align-top pb-1.5 text-slate-700">
+                            a. {skMengingatA}<br/>
+                            b. {skMengingatB}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="font-extrabold align-top">MEMPERHATIKAN</td>
+                          <td className="text-center align-top">:</td>
+                          <td className="align-top pb-1.5 text-slate-700">
+                            a. {skMemperhatikanA}<br/>
+                            b. {skMemperhatikanB.length > 120 ? skMemperhatikanB.substring(0, 120) + "..." : skMemperhatikanB}<br/>
+                            c. {skMemperhatikanC}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="text-center font-black tracking-wider text-[5.5px] my-1.5">MEMUTUSKAN</div>
+
+                    <table className="w-full text-[5.5px]">
+                      <tbody>
+                        <tr>
+                          <td className="w-16 font-extrabold align-top">MENETAPKAN</td>
+                          <td className="text-center align-top">:</td>
+                          <td className="align-top">
+                            <strong>1. Menyatakan Kelulusan Sebagai Berikut :</strong>
+                            <div className="mt-1 ml-2 space-y-0.5 text-[5px]">
+                              <div>Total Peserta : {skTextTotal}</div>
+                              <div>Lulus : {skTextLulus}</div>
+                              <div>Tidak Lulus : {skTextTidakLulus}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Elegant Simulated Green Footer */}
+                  <div className="h-5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-b flex items-center justify-between px-3 -mx-6 -mb-6 relative overflow-hidden">
+                    <span className="text-[4px] text-white font-extrabold">▶ f 📷 𝕏 &nbsp; ansorbogoronline</span>
+                    <span className="text-[4px] text-emerald-100 bg-emerald-700/50 px-1 py-0.5 rounded">www.ansorbogoronline.or.id</span>
+                  </div>
+                </div>
+
+                {/* Simulated Sheet Page 2 */}
+                <div className="w-[145mm] min-h-[205mm] bg-white border border-slate-200 dark:border-navy-800 shadow-xl p-6 relative flex flex-col justify-between text-[6px] text-slate-850 leading-normal">
+                  <div>
+                    {/* Simulated Header */}
+                    <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-3">
+                      <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-slate-100 border border-slate-200 rounded">
+                        <span className="text-[8px] text-emerald-600 font-extrabold">ANSOR</span>
+                      </div>
+                      <div className="flex-1 text-center font-bold">
+                        <div className="text-[7.5px] uppercase">PIMPINAN CABANG</div>
+                        <div className="text-[7.5px] uppercase">GERAKAN PEMUDA ANSOR</div>
+                        <div className="text-[8px] uppercase font-black text-emerald-600">KABUPATEN BOGOR</div>
+                        <div className="text-[4px] font-normal text-slate-500">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                      </div>
+                    </div>
+
+                    {/* Continuing menetapkan points */}
+                    <table className="w-full text-[5.5px] mt-4">
+                      <tbody>
+                        <tr>
+                          <td className="w-16 font-extrabold align-top opacity-0">MENETAPKAN</td>
+                          <td className="w-2 text-center align-top opacity-0">:</td>
+                          <td className="align-top space-y-1">
+                            <div>2. Bahwa Peserta yang lulus berhak mendapatkan Sertifikat PKD setelah melaksanakan rencana tindak lanjut yang sudah ditentukan.</div>
+                            <div>3. Daftar Nama Hasil Kelulusan Kaderisasi menjadi bagian tidak terpisahkan dari surat ketetapan ini</div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Meta dates on right */}
+                    <div className="w-28 ml-auto text-[5.5px] border-t border-slate-200 pt-2 mt-4 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Ditetapkan</span>
+                        <span>: {skDitetapkan}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tanggal</span>
+                        <span>: {skTanggalHijriah}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span></span>
+                        <span>: {skTanggalMasehi}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center font-black uppercase text-[5.5px] mt-4 mb-4">
+                      DEWAN INSTRUKTUR PIMPINAN CABANG<br/>
+                      GERAKAN PEMUDA ANSOR<br/>
+                      KABUPATEN BOGOR
+                    </div>
+
+                    <div className="flex justify-between px-4 text-[5.5px] font-bold">
+                      <div className="text-center w-28 flex flex-col justify-between h-[65px]">
+                        <div>Kepala Sekolah Kaderisasi,</div>
+                        {useQrSignatures ? (
+                          <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
+                            <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-6"></div>
+                        )}
+                        <div className="font-black underline uppercase leading-none">{skKepalaSekolah}</div>
+                      </div>
+                      <div className="text-center w-28 flex flex-col justify-between h-[65px]">
+                        <div>Koordinator Instruktur Cabang,</div>
+                        {useQrSignatures ? (
+                          <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
+                            <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                              <div className="bg-transparent"></div>
+                              <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-6"></div>
+                        )}
+                        <div className="font-black underline uppercase leading-none">{skKoordinator}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center text-[5.5px] mt-3">
+                      <div className="font-bold">Mengetahui</div>
+                      <div className="font-extrabold uppercase text-[5.5px]">PIMPINAN CABANG GERAKAN PEMUDA ANSOR</div>
+                      <div className="font-extrabold uppercase text-[5.5px] mb-0.5">KABUPATEN BOGOR</div>
+                      <div className="font-bold">Ketua,</div>
+                      {useQrSignatures ? (
+                        <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
+                          <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-900 rounded-[0.5px]"></div>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-6"></div>
+                      )}
+                      <div className="font-black underline uppercase">{skKetua}</div>
+                    </div>
+
+                    {/* Simulated Validation Badge in Preview */}
+                    {useDocumentValidation && (
+                      <div className="mt-3 border border-dashed border-emerald-500/40 bg-emerald-50/50 p-1.5 rounded-lg flex items-center gap-1.5 text-[4px] leading-tight text-slate-800">
+                        <div className="w-8 h-8 bg-white border border-slate-200 p-0.5 rounded shrink-0 flex items-center justify-center relative overflow-hidden">
+                          <div className="grid grid-cols-4 gap-[0.5px] w-full h-full opacity-70">
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                            <div className="bg-transparent"></div>
+                            <div className="bg-slate-800"></div>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center scale-90">
+                            <span className="text-[3px] font-black text-emerald-600 bg-white/90 px-0.5 py-0.1 border border-emerald-400 rounded">OK</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <div className="font-black text-emerald-700 text-[4.5px] tracking-wider border-b border-emerald-500/20 pb-0.5 mb-0.5">VALIDASI SISTEM KADERISASI</div>
+                          <div><strong>Operator:</strong> {skOperator}</div>
+                          <div><strong>Waktu:</strong> {skWaktuCetak}</div>
+                          <div className="text-emerald-800 font-bold">✔ Dokumen Sah & Terverifikasi</div>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Elegant Simulated Green Footer */}
+                  <div className="h-5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-b flex items-center justify-between px-3 -mx-6 -mb-6 relative overflow-hidden">
+                    <span className="text-[4px] text-white font-extrabold">▶ f 📷 𝕏 &nbsp; ansorbogoronline</span>
+                    <span className="text-[4px] text-emerald-100 bg-emerald-700/50 px-1 py-0.5 rounded">www.ansorbogoronline.or.id</span>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Modal Footer actions */}
+            <div className="bg-slate-50 dark:bg-slate-950 p-4.5 border-t dark:border-navy-850 flex justify-between items-center shrink-0 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  const tot = peserta.length;
+                  const lls = peserta.filter(p => p.status_kelulusan === 'LULUS' || p.status_kelulusan === 'LULUS BERSYARAT').length;
+                  const tdk = peserta.filter(p => p.status_kelulusan === 'TIDAK LULUS').length;
+                  
+                  setSkNomor('029 /PC-IX-22/SK-01/VI/2026');
+                  setSkAngkatan('XXIX');
+                  setSkKecamatan('Cileungsi');
+                  setSkTanggalRapat('27 Juni 2026');
+                  setSkMenimbangA('Bahwa Dewan Instruktur Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor menganggap penting adanya surat penetapan kelulusan peserta Pelatihan Kepemimpinan Dasar (PKD) Angkatan XXIX yang dilaksanakan oleh Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
+                  setSkMenimbangB('Bahwa untuk menjamin kepastian status kelulusan kepesertaan Kaderisasi Pelatihan Kepemimpinan Dasar (PKD) sebagai bagian dari Pelaksanaan amanat organisasi');
+                  setSkMengingatA('Keputusan Konferensi besar Pimpinan Pusat Gerakan Pemuda Ansor Nomor 08/KONBES-XXVII/X/2024 tentang Sistem Kaderisasi');
+                  setSkMengingatB('Peraturan Organisasi (PO) Sistem Kaderisasi Pasal 63 Ayat 2');
+                  setSkMemperhatikanA('Rekapitulasi absensi kehadiran peserta pada setiap materi wajib yang telah ditentukan sistem kaderisasi');
+                  setSkMemperhatikanB('Rapat Dewan Instruktur Cabang mengenai kelayakan kelulusan peserta PKD Angkatan XXIX Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor pada tanggal 27 Juni 2026');
+                  setSkMemperhatikanC('Mendengarkan saran dan masukan dari Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
+                  setSkDitetapkan('Di Cileungsi');
+                  setSkTanggalHijriah('12 Muharrom 1448H');
+                  setSkTanggalMasehi('28 Juni 2026 M');
+                  setSkKepalaSekolah('HAMDANI M MALIK, S.E');
+                  setSkKoordinator('SEPTA AJI., S.KOM');
+                  setSkKetua('DOMIRI A GHAZALI, S.H');
+                  setSkTextTotal(`${tot} ( ${kekata(tot)} )`);
+                  setSkTextLulus(`${lls} ( ${kekata(lls)} )`);
+                  setSkTextTidakLulus(`${tdk} ( ${kekata(tdk)} )`);
+                  setUseQrSignatures(true);
+                  setUseDocumentValidation(true);
+                  setSkOperator(currentUserName || 'Operator Admin');
+                  const now = new Date();
+                  const formattedDateTime = now.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  }) + ' pukul ' + now.toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) + ' WIB';
+                  setSkWaktuCetak(formattedDateTime);
+                }}
+                className="px-4 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-navy-900 font-extrabold rounded-lg border border-slate-200 dark:border-navy-850 uppercase text-[10px] tracking-wider transition"
+              >
+                Reset Default
+              </button>
+              
+              <div className="flex space-x-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsSkOpen(false)}
+                  className="px-5 py-2 text-slate-500 dark:text-slate-400 bg-white hover:bg-slate-100 dark:bg-navy-950 dark:hover:bg-navy-900 border border-slate-200 dark:border-navy-850 font-extrabold rounded-lg uppercase text-[10px] tracking-wider transition"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handlePrintSK}
+                  className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold rounded-lg shadow-md transition active:scale-[0.98] uppercase text-[10px] tracking-wider flex items-center space-x-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Surat Keputusan</span>
+                </button>
+              </div>
             </div>
 
           </div>
