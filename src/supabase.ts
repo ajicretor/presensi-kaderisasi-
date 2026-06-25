@@ -309,73 +309,87 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
     // Dynamically query the branding table first to detect active column casing (e.g. appName vs appname)
     const { data: existingBranding } = await client.from('branding').select('*').eq('id', 1).maybeSingle();
     
-    const upsertData: any = { id: 1 };
-    
+    // We will start with a full camelCase payload
+    let currentPayload: any = {
+      id: 1,
+      appName: branding.appName,
+      organisasi: branding.organisasi,
+      cabang: branding.cabang,
+      totalSesi: branding.totalSesi,
+      logo: branding.logo,
+      themeColor: branding.themeColor,
+      delegationType: branding.delegationType || 'PAC'
+    };
+
+    // If existingBranding was found, we align our initial payload with its keys
     if (existingBranding) {
       const dbKeys = Object.keys(existingBranding);
+      const alignedPayload: any = { id: 1 };
       
-      // appName vs appname
-      if (dbKeys.includes('appName')) {
-        upsertData.appName = branding.appName;
-      } else if (dbKeys.includes('appname')) {
-        upsertData.appname = branding.appName;
-      } else {
-        upsertData.appName = branding.appName;
-      }
+      // Map properties with casing matching database keys
+      if (dbKeys.includes('appName')) alignedPayload.appName = branding.appName;
+      else if (dbKeys.includes('appname')) alignedPayload.appname = branding.appName;
+      else alignedPayload.appName = branding.appName;
 
-      // organisasi
-      upsertData.organisasi = branding.organisasi;
-      
-      // cabang
-      upsertData.cabang = branding.cabang;
+      alignedPayload.organisasi = branding.organisasi;
+      alignedPayload.cabang = branding.cabang;
 
-      // totalSesi vs totalsesi
-      if (dbKeys.includes('totalSesi')) {
-        upsertData.totalSesi = branding.totalSesi;
-      } else if (dbKeys.includes('totalsesi')) {
-        upsertData.totalsesi = branding.totalSesi;
-      } else {
-        upsertData.totalSesi = branding.totalSesi;
-      }
+      if (dbKeys.includes('totalSesi')) alignedPayload.totalSesi = branding.totalSesi;
+      else if (dbKeys.includes('totalsesi')) alignedPayload.totalsesi = branding.totalSesi;
+      else alignedPayload.totalSesi = branding.totalSesi;
 
-      // logo
-      upsertData.logo = branding.logo;
+      alignedPayload.logo = branding.logo;
 
-      // themeColor vs themecolor
-      if (dbKeys.includes('themeColor')) {
-        upsertData.themeColor = branding.themeColor;
-      } else if (dbKeys.includes('themecolor')) {
-        upsertData.themecolor = branding.themeColor;
-      } else {
-        upsertData.themeColor = branding.themeColor;
-      }
+      if (dbKeys.includes('themeColor')) alignedPayload.themeColor = branding.themeColor;
+      else if (dbKeys.includes('themecolor')) alignedPayload.themecolor = branding.themeColor;
+      else alignedPayload.themeColor = branding.themeColor;
 
-      // delegationType vs delegationtype
-      if (dbKeys.includes('delegationType')) {
-        upsertData.delegationType = branding.delegationType || 'PAC';
-      } else if (dbKeys.includes('delegationtype')) {
-        upsertData.delegationtype = branding.delegationType || 'PAC';
-      } else {
-        upsertData.delegationType = branding.delegationType || 'PAC';
-      }
-    } else {
-      // If table is completely empty, try default camelCase
-      upsertData.appName = branding.appName;
-      upsertData.organisasi = branding.organisasi;
-      upsertData.cabang = branding.cabang;
-      upsertData.totalSesi = branding.totalSesi;
-      upsertData.logo = branding.logo;
-      upsertData.themeColor = branding.themeColor;
-      upsertData.delegationType = branding.delegationType || 'PAC';
+      if (dbKeys.includes('delegationType')) alignedPayload.delegationType = branding.delegationType || 'PAC';
+      else if (dbKeys.includes('delegationtype')) alignedPayload.delegationtype = branding.delegationType || 'PAC';
+      else alignedPayload.delegationType = branding.delegationType || 'PAC';
+
+      currentPayload = alignedPayload;
     }
 
-    const { error } = await client.from('branding').upsert(upsertData);
-    if (error) {
-      console.error("Error upserting branding to Supabase:", error);
-      
-      // Fallback: If camelCase columns failed on empty table, try lowercase fallback
-      if (!existingBranding) {
-        const fallbackData = {
+    // Keep track of failed columns to avoid infinite loops
+    const failedColumns = new Set<string>();
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const { error } = await client.from('branding').upsert(currentPayload);
+      if (!error) {
+        return true;
+      }
+
+      console.warn(`Sync branding attempt ${attempt + 1} failed:`, error);
+
+      // If it's an "undefined column" error (PostgreSQL error code 42703)
+      if (error.code === '42703' && error.message) {
+        // Find column name between quotes, e.g., column "appName" of relation "branding" does not exist
+        const match = error.message.match(/column "([^"]+)"/);
+        if (match) {
+          const missingCol = match[1];
+          failedColumns.add(missingCol);
+          delete currentPayload[missingCol];
+
+          // If a camelCase variant failed and the lowercase variant hasn't failed yet, try substituting it
+          if (missingCol === 'appName' && !failedColumns.has('appname')) {
+            currentPayload.appname = branding.appName;
+          } else if (missingCol === 'totalSesi' && !failedColumns.has('totalsesi')) {
+            currentPayload.totalsesi = branding.totalSesi;
+          } else if (missingCol === 'themeColor' && !failedColumns.has('themecolor')) {
+            currentPayload.themecolor = branding.themeColor;
+          } else if (missingCol === 'delegationType' && !failedColumns.has('delegationtype')) {
+            currentPayload.delegationtype = branding.delegationType || 'PAC';
+          }
+          
+          continue;
+        }
+      }
+
+      // If we got a different error or we couldn't match a column name, let's try some standard fallback payloads
+      if (attempt === 0) {
+        // Fallback 1: Pure lowercase schema payload
+        currentPayload = {
           id: 1,
           appname: branding.appName,
           organisasi: branding.organisasi,
@@ -385,16 +399,25 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
           themecolor: branding.themeColor,
           delegationtype: branding.delegationType || 'PAC'
         };
-        const { error: err2 } = await client.from('branding').upsert(fallbackData);
-        if (err2) {
-          console.error("Fallback lowercase upsert failed:", err2);
-          return false;
-        }
-        return true;
+        continue;
       }
+
+      if (attempt === 1) {
+        // Fallback 2: Minimal essential payload (just ID, organisasi, cabang, logo, which are guaranteed to exist or have standard lowercase names)
+        currentPayload = {
+          id: 1,
+          organisasi: branding.organisasi,
+          cabang: branding.cabang,
+          logo: branding.logo
+        };
+        continue;
+      }
+
+      // If everything else fails, return false
       return false;
     }
-    return true;
+
+    return false;
   } catch (e) {
     console.error("Exception syncing branding to Supabase:", e);
     return false;
