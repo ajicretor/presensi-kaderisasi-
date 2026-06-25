@@ -116,6 +116,12 @@ export default function KelulusanTab({
   const [useQrSignatures, setUseQrSignatures] = useState(true);
   const [useDocumentValidation, setUseDocumentValidation] = useState(true);
 
+  // States for live interactive preview QR codes
+  const [previewQrKepalaSekolah, setPreviewQrKepalaSekolah] = useState('');
+  const [previewQrKoordinator, setPreviewQrKoordinator] = useState('');
+  const [previewQrKetua, setPreviewQrKetua] = useState('');
+  const [previewQrValidation, setPreviewQrValidation] = useState('');
+
   function kekata(n: number): string {
     const words = ["Nol", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
     if (n < 12) return words[n];
@@ -147,6 +153,60 @@ export default function KelulusanTab({
       setSkWaktuCetak(`${formattedDate}, ${formattedTime}`);
     }
   }, [isSkOpen, peserta, currentUserName]);
+
+  useEffect(() => {
+    const updatePreviewQrs = async () => {
+      try {
+        if (useQrSignatures) {
+          const qrKepala = await QRCode.toDataURL(
+            `DEWAN INSTRUKTUR PC GP ANSOR KAB BOGOR\nJabatan: Kepala Sekolah Kaderisasi\nNama: ${skKepalaSekolah}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, 
+            { margin: 1, width: 120 }
+          );
+          const qrKoord = await QRCode.toDataURL(
+            `DEWAN INSTRUKTUR PC GP ANSOR KAB BOGOR\nJabatan: Koordinator Instruktur Cabang\nNama: ${skKoordinator}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, 
+            { margin: 1, width: 120 }
+          );
+          const qrKetuaSig = await QRCode.toDataURL(
+            `PIMPINAN CABANG GERAKAN PEMUDA ANSOR KAB BOGOR\nJabatan: Ketua\nNama: ${skKetua}\nStatus: TERVERIFIKASI & TANDATANGAN DIGITAL`, 
+            { margin: 1, width: 120 }
+          );
+          setPreviewQrKepalaSekolah(qrKepala);
+          setPreviewQrKoordinator(qrKoord);
+          setPreviewQrKetua(qrKetuaSig);
+        } else {
+          setPreviewQrKepalaSekolah('');
+          setPreviewQrKoordinator('');
+          setPreviewQrKetua('');
+        }
+
+        if (useDocumentValidation) {
+          const valText = `DOKUMEN RESMI TERVERIFIKASI\nSK Penetapan Kelulusan PKD Angkatan ${skAngkatan}\nNomor: ${skNomor}\nKecamatan: ${skKecamatan}\nOperator Cetak: ${skOperator || 'Admin'}\nWaktu Cetak: ${skWaktuCetak || 'Now'}\nStatus: SAH & TERCATAT`;
+          const qrVal = await QRCode.toDataURL(valText, { margin: 1, width: 120 });
+          setPreviewQrValidation(qrVal);
+        } else {
+          setPreviewQrValidation('');
+        }
+      } catch (err) {
+        console.error('Error generating preview QR codes', err);
+      }
+    };
+
+    if (isSkOpen) {
+      updatePreviewQrs();
+    }
+  }, [
+    isSkOpen,
+    skKepalaSekolah,
+    skKoordinator,
+    skKetua,
+    skAngkatan,
+    skNomor,
+    skKecamatan,
+    skOperator,
+    skWaktuCetak,
+    useQrSignatures,
+    useDocumentValidation
+  ]);
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
@@ -2663,28 +2723,12 @@ export default function KelulusanTab({
                       <div className="text-center w-28 flex flex-col justify-between h-[65px]">
                         <div>Kepala Sekolah Kaderisasi,</div>
                         {useQrSignatures ? (
-                          <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
-                            <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
-                            </div>
+                          <div className="my-1 mx-auto w-10 h-10 bg-white border border-slate-200 p-0.5 rounded flex items-center justify-center relative overflow-hidden">
+                            {previewQrKepalaSekolah ? (
+                              <img src={previewQrKepalaSekolah} className="w-full h-full object-contain animate-fadeIn" alt="QR TTD" />
+                            ) : (
+                              <div className="text-[4px] text-slate-400">Loading...</div>
+                            )}
                           </div>
                         ) : (
                           <div className="h-6"></div>
@@ -2694,28 +2738,12 @@ export default function KelulusanTab({
                       <div className="text-center w-28 flex flex-col justify-between h-[65px]">
                         <div>Koordinator Instruktur Cabang,</div>
                         {useQrSignatures ? (
-                          <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
-                            <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                              <div className="bg-transparent"></div>
-                              <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
-                            </div>
+                          <div className="my-1 mx-auto w-10 h-10 bg-white border border-slate-200 p-0.5 rounded flex items-center justify-center relative overflow-hidden">
+                            {previewQrKoordinator ? (
+                              <img src={previewQrKoordinator} className="w-full h-full object-contain animate-fadeIn" alt="QR TTD" />
+                            ) : (
+                              <div className="text-[4px] text-slate-400">Loading...</div>
+                            )}
                           </div>
                         ) : (
                           <div className="h-6"></div>
@@ -2730,28 +2758,12 @@ export default function KelulusanTab({
                       <div className="font-extrabold uppercase text-[5.5px] mb-0.5">KABUPATEN BOGOR</div>
                       <div className="font-bold">Ketua,</div>
                       {useQrSignatures ? (
-                        <div className="my-1 mx-auto w-10 h-10 bg-slate-50 border border-emerald-500/20 p-0.5 rounded flex flex-col justify-between items-center relative overflow-hidden">
-                          <div className="grid grid-cols-4 gap-[1.5px] w-full h-full opacity-80">
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-900 rounded-[0.5px]"></div>
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[4px] font-black text-emerald-600 bg-white/95 px-0.5 py-0.2 rounded border border-emerald-500 shadow-xs uppercase tracking-tighter scale-90">QR TTD</span>
-                          </div>
+                        <div className="my-1 mx-auto w-10 h-10 bg-white border border-slate-200 p-0.5 rounded flex items-center justify-center relative overflow-hidden">
+                          {previewQrKetua ? (
+                            <img src={previewQrKetua} className="w-full h-full object-contain animate-fadeIn" alt="QR TTD" />
+                          ) : (
+                            <div className="text-[4px] text-slate-400">Loading...</div>
+                          )}
                         </div>
                       ) : (
                         <div className="h-6"></div>
@@ -2763,27 +2775,11 @@ export default function KelulusanTab({
                     {useDocumentValidation && (
                       <div className="mt-3 border border-dashed border-emerald-500/40 bg-emerald-50/50 p-1.5 rounded-lg flex items-center gap-1.5 text-[4px] leading-tight text-slate-800">
                         <div className="w-8 h-8 bg-white border border-slate-200 p-0.5 rounded shrink-0 flex items-center justify-center relative overflow-hidden">
-                          <div className="grid grid-cols-4 gap-[0.5px] w-full h-full opacity-70">
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                            <div className="bg-transparent"></div>
-                            <div className="bg-slate-800"></div>
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center scale-90">
-                            <span className="text-[3px] font-black text-emerald-600 bg-white/90 px-0.5 py-0.1 border border-emerald-400 rounded">OK</span>
-                          </div>
+                          {previewQrValidation ? (
+                            <img src={previewQrValidation} className="w-full h-full object-contain animate-fadeIn" alt="Validation QR" />
+                          ) : (
+                            <div className="text-[4px] text-slate-400">Loading...</div>
+                          )}
                         </div>
                         <div className="flex-1 text-left">
                           <div className="font-black text-emerald-700 text-[4.5px] tracking-wider border-b border-emerald-500/20 pb-0.5 mb-0.5">VALIDASI SISTEM KADERISASI</div>
