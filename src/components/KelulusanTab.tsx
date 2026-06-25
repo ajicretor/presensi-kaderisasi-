@@ -100,7 +100,7 @@ export default function KelulusanTab({
   const [skMemperhatikanC, setSkMemperhatikanC] = useState('Mendengarkan saran dan masukan dari Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
 
   const [skDitetapkan, setSkDitetapkan] = useState('Di Cileungsi');
-  const [skTanggalHijriah, setSkTanggalHijriah] = useState('12 Muharrom 1448H');
+  const [skTanggalHijriah, setSkTanggalHijriah] = useState('11/12 Muharrom 1448H');
   const [skTanggalMasehi, setSkTanggalMasehi] = useState('28 Juni 2026 M');
   
   const [skKepalaSekolah, setSkKepalaSekolah] = useState('HAMDANI M MALIK, S.E');
@@ -113,6 +113,7 @@ export default function KelulusanTab({
 
   const [skOperator, setSkOperator] = useState('');
   const [skWaktuCetak, setSkWaktuCetak] = useState('');
+  const [skLogo, setSkLogo] = useState<string | null>(null);
   const [useQrSignatures, setUseQrSignatures] = useState(true);
   const [useDocumentValidation, setUseDocumentValidation] = useState(true);
 
@@ -697,22 +698,52 @@ export default function KelulusanTab({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    let logoHtml = '';
-    if (branding && branding.logo && (typeof branding.logo === 'string')) {
-      if (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) {
-        logoHtml = `<div class="logo-container"><div>${branding.logo}</div></div>`;
-      } else {
-        logoHtml = `<div class="logo-container"><img src="${branding.logo}" alt="Logo" /></div>`;
-      }
-    }
+    const ansorGreenLogo = `
+<svg viewBox="0 0 120 140" width="100" height="116" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="60,5 115,115 5,115" fill="#008a3c" />
+  <polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" stroke-width="2" />
+  <path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" />
+  <circle cx="60" cy="72" r="4.5" fill="#ffffff" />
+  <line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" stroke-width="1.2" />
+  <line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" stroke-width="1.2" />
+  <line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" stroke-width="1.2" />
+  <line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" stroke-width="1.2" />
+
+  <polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" />
+  <polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" />
+  <polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" />
+  <polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" />
+  <polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" />
+  <polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" />
+  <polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" />
+  <polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" />
+  <polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" />
+
+  <rect x="15" y="103" width="90" height="15" fill="#008a3c" />
+  <text x="60" y="115" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="900" font-size="12" fill="#ffffff" text-anchor="middle" letter-spacing="1">ANSOR</text>
+</svg>
+    `;
+
+    const logoHtml = skLogo 
+      ? `<div class="logo-container"><img src="${skLogo}" alt="Logo" /></div>`
+      : `<div class="logo-container"><div>${ansorGreenLogo}</div></div>`;
 
     printWindow.document.write(`
       <html>
         <head>
           <title>Surat_Ketetapan_Kelulusan_PKD_${skAngkatan}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
             
+            @page {
+              size: A4;
+              margin: 0;
+            }
+
             body {
               margin: 0;
               padding: 0;
@@ -726,10 +757,10 @@ export default function KelulusanTab({
             /* Page styles */
             .page {
               width: 210mm;
-              height: 295mm;
+              height: 297mm;
               background-color: #ffffff;
               box-sizing: border-box;
-              padding: 15mm 20mm;
+              padding: 20mm 20mm;
               position: relative;
               display: flex;
               flex-direction: column;
@@ -742,15 +773,14 @@ export default function KelulusanTab({
               display: flex;
               align-items: center;
               gap: 20px;
-              border-bottom: 3.5px double #000000;
               padding-bottom: 12px;
               margin-bottom: 18px;
             }
             .logo-container {
-              width: 75px;
-              height: 75px;
-              min-width: 75px;
-              min-height: 75px;
+              width: 100px;
+              height: 116px;
+              min-width: 100px;
+              min-height: 116px;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -758,13 +788,13 @@ export default function KelulusanTab({
               box-sizing: border-box;
             }
             .logo-container img {
-              width: 70px;
-              height: 70px;
+              width: 100px;
+              height: 116px;
               object-fit: contain;
             }
             .logo-container svg {
-              width: 70px;
-              height: 70px;
+              width: 100px;
+              height: 116px;
             }
             .logo-container div {
               display: flex;
@@ -774,55 +804,56 @@ export default function KelulusanTab({
             
             .header-info {
               flex-grow: 1;
-              text-align: center;
+              text-align: right;
+              padding-right: 0px;
             }
             .title-main {
-              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
               font-size: 21px;
               font-weight: 800;
               text-transform: uppercase;
               margin: 0;
               color: #000000;
-              letter-spacing: 0.01em;
-              line-height: 1.1;
+              letter-spacing: 0.05em;
+              line-height: 1.2;
             }
             .title-sub1 {
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-size: 20px;
+              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+              font-size: 24px;
               font-weight: 800;
               text-transform: uppercase;
-              margin: 4px 0 0 0;
-              color: #000000;
-              letter-spacing: 0.01em;
-              line-height: 1.1;
-            }
-            .title-sub2 {
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-size: 22px;
-              font-weight: 900;
-              text-transform: uppercase;
-              margin: 3px 0 0 0;
+              margin: 2px 0 0 0;
               color: #000000;
               letter-spacing: 0.03em;
-              line-height: 1.1;
+              line-height: 1.2;
+            }
+            .title-sub2 {
+              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+              font-size: 24px;
+              font-weight: 900;
+              text-transform: uppercase;
+              margin: 2px 0 0 0;
+              color: #000000;
+              letter-spacing: 0.05em;
+              line-height: 1.2;
             }
             .address-info {
-              font-family: 'Inter', sans-serif;
-              font-size: 9.5px;
+              font-family: 'Inter', Arial, sans-serif;
+              font-size: 10px;
               font-weight: 500;
-              margin: 6px 0 0 0;
-              color: #1e293b;
+              margin: 8px 0 2px 0;
+              color: #000000;
             }
             .links-info {
-              font-family: 'Inter', sans-serif;
-              font-size: 9.5px;
+              font-family: 'Inter', Arial, sans-serif;
+              font-size: 10px;
               font-weight: 500;
-              margin: 2px 0 0 0;
-              color: #1e293b;
+              margin: 0;
+              color: #000000;
             }
             .links-info a {
               color: #0284c7;
-              text-decoration: none;
+              text-decoration: underline;
             }
 
             /* Document structure styles */
@@ -877,7 +908,7 @@ export default function KelulusanTab({
               width: 100%;
               border-collapse: collapse;
               margin-bottom: 12px;
-              font-size: 11px;
+              font-size: 13px;
               line-height: 1.45;
             }
             .doc-table td {
@@ -949,17 +980,22 @@ export default function KelulusanTab({
             /* Page 2 signatures styles */
             .meta-date {
               margin-left: auto;
-              width: 250px;
-              font-size: 11px;
+              width: 280px;
+              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+              font-size: 13px;
               margin-top: 15px;
               margin-bottom: 15px;
-              line-height: 1.4;
+              line-height: 1.45;
             }
             .meta-date table {
               width: 100%;
+              border-collapse: collapse;
             }
             .meta-date td {
-              padding: 1px 0;
+              padding: 2px 0;
+              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+              font-size: 13px;
+              color: #000000;
             }
 
             .instruktur-title {
@@ -996,18 +1032,22 @@ export default function KelulusanTab({
             }
 
             .validation-badge {
+              position: absolute;
+              bottom: calc(48px + 0.5cm);
+              left: 20mm;
+              width: calc(100% - 40mm);
+              max-width: 420px;
+              box-sizing: border-box;
               display: flex;
               align-items: center;
               gap: 12px;
-              border: 1.5px dashed #10b981;
+              border: 1.5px dashed #008a3c;
               background-color: #f0fdf4;
               padding: 10px 14px;
               border-radius: 8px;
-              max-width: 380px;
-              font-size: 9.5px;
+              font-size: 8px;
               line-height: 1.4;
-              color: #111827;
-              margin: 15px auto 0 auto;
+              color: #000000;
               text-align: left;
             }
             .validation-qr {
@@ -1034,7 +1074,7 @@ export default function KelulusanTab({
               font-family: 'Plus Jakarta Sans', sans-serif;
               font-weight: 800;
               color: #047857;
-              font-size: 9px;
+              font-size: 8px;
               letter-spacing: 0.05em;
               margin-bottom: 4px;
               border-bottom: 1.5px solid #34d399;
@@ -1066,7 +1106,7 @@ export default function KelulusanTab({
               left: 0;
               right: 0;
               height: 48px;
-              background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
+              background-color: #008a3c;
               display: flex;
               align-items: center;
               justify-content: space-between;
@@ -1075,7 +1115,7 @@ export default function KelulusanTab({
               font-family: 'Inter', sans-serif;
               font-size: 9.5px;
               font-weight: 700;
-              border-top: 1px solid #34d399;
+              border-top: 1.5px solid #ffffff;
             }
             .footer-left {
               display: flex;
@@ -1090,7 +1130,7 @@ export default function KelulusanTab({
               width: 16px;
               height: 16px;
               background-color: #ffffff;
-              color: #059669;
+              color: #008a3c;
               border-radius: 50%;
               display: flex;
               align-items: center;
@@ -1102,12 +1142,15 @@ export default function KelulusanTab({
               letter-spacing: 0.02em;
             }
             .footer-badge {
-              background-color: #10b981;
-              border: 1px solid rgba(255, 255, 255, 0.4);
-              padding: 3px 8px;
-              border-radius: 5px;
+              background-color: transparent;
+              color: #ffffff;
+              border: 1.5px solid #ffffff;
+              padding: 4px 14px;
+              border-radius: 14px;
               font-size: 9px;
-              margin-left: 10px;
+              margin-left: 12px;
+              font-weight: 700;
+              letter-spacing: 0.02em;
             }
             
             /* Styled diagonal stripe on right */
@@ -1116,10 +1159,10 @@ export default function KelulusanTab({
               right: 0;
               bottom: 0;
               height: 100%;
-              width: 80px;
-              background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-              clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
-              border-left: 3px solid #34d399;
+              width: 150px;
+              background-color: #00aa4e;
+              clip-path: polygon(25% 0, 100% 0, 100% 100%, 0 100%);
+              border-left: 4px solid #ffffff;
             }
 
             @media print {
@@ -1147,7 +1190,7 @@ export default function KelulusanTab({
               
               <!-- Kop Surat -->
               <div class="header-flex">
-                \${logoHtml}
+                ${logoHtml}
                 <div class="header-info">
                   <h1 class="title-main">PIMPINAN CABANG</h1>
                   <h2 class="title-sub1">GERAKAN PEMUDA ANSOR</h2>
@@ -1159,12 +1202,12 @@ export default function KelulusanTab({
 
               <!-- Judul SK -->
               <div class="doc-title">SURAT KEPUTUSAN PENETAPAN KELULUSAN</div>
-              <div class="doc-number">Nomor : \${skNomor}</div>
+              <div class="doc-number">Nomor : ${skNomor}</div>
               
               <div class="doc-about-label">T e n t a n g</div>
               <div class="doc-about-title">
                 PENETAPAN KELULUSAN PESERTA<br/>
-                PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN \${skAngkatan}<br/>
+                PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN ${skAngkatan}<br/>
                 PIMPINAN CABANG GERAKAN PEMUDA ANSOR<br/>
                 KABUPATEN BOGOR
               </div>
@@ -1181,11 +1224,11 @@ export default function KelulusanTab({
                     <ul class="bullet-list">
                       <li>
                         <span class="bullet-char">a.</span>
-                        \${skMenimbangA}
+                        ${skMenimbangA}
                       </li>
                       <li>
                         <span class="bullet-char">b.</span>
-                        \${skMenimbangB}
+                        ${skMenimbangB}
                       </li>
                     </ul>
                   </td>
@@ -1197,11 +1240,11 @@ export default function KelulusanTab({
                     <ul class="bullet-list">
                       <li>
                         <span class="bullet-char">a.</span>
-                        \${skMengingatA}
+                        ${skMengingatA}
                       </li>
                       <li>
                         <span class="bullet-char">b.</span>
-                        \${skMengingatB}
+                        ${skMengingatB}
                       </li>
                     </ul>
                   </td>
@@ -1213,15 +1256,15 @@ export default function KelulusanTab({
                     <ul class="bullet-list">
                       <li>
                         <span class="bullet-char">a.</span>
-                        \${skMemperhatikanA}
+                        ${skMemperhatikanA}
                       </li>
                       <li>
                         <span class="bullet-char">b.</span>
-                        \${skMemperhatikanB}
+                        ${skMemperhatikanB}
                       </li>
                       <li>
                         <span class="bullet-char">c.</span>
-                        \${skMemperhatikanC}
+                        ${skMemperhatikanC}
                       </li>
                     </ul>
                   </td>
@@ -1240,17 +1283,17 @@ export default function KelulusanTab({
                       <div class="stats-row">
                         <span class="stats-label">Total Peserta</span>
                         <span class="stats-dots">:</span>
-                        <span class="stats-val">\${skTextTotal}</span>
+                        <span class="stats-val">${skTextTotal}</span>
                       </div>
                       <div class="stats-row">
                         <span class="stats-label">Lulus</span>
                         <span class="stats-dots">:</span>
-                        <span class="stats-val">\${skTextLulus}</span>
+                        <span class="stats-val">${skTextLulus}</span>
                       </div>
                       <div class="stats-row">
                         <span class="stats-label">Tidak Lulus</span>
                         <span class="stats-dots">:</span>
-                        <span class="stats-val">\${skTextTidakLulus}</span>
+                        <span class="stats-val">${skTextTidakLulus}</span>
                       </div>
                     </div>
                   </td>
@@ -1281,7 +1324,7 @@ export default function KelulusanTab({
               
               <!-- Kop Surat -->
               <div class="header-flex">
-                \${logoHtml}
+                ${logoHtml}
                 <div class="header-info">
                   <h1 class="title-main">PIMPINAN CABANG</h1>
                   <h2 class="title-sub1">GERAKAN PEMUDA ANSOR</h2>
@@ -1315,19 +1358,19 @@ export default function KelulusanTab({
               <div class="meta-date">
                 <table>
                   <tr>
-                    <td style="width: 90px; font-weight: bold;">Ditetapkan</td>
-                    <td style="width: 15px; text-align: center; font-weight: bold;">:</td>
-                    <td>\${skDitetapkan}</td>
+                    <td style="width: 85px; font-weight: normal;">Ditetapkan</td>
+                    <td style="width: 15px; text-align: center; font-weight: normal;">:</td>
+                    <td style="font-weight: normal;">${skDitetapkan}</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold;">Tanggal</td>
-                    <td style="text-align: center; font-weight: bold;">:</td>
-                    <td style="text-decoration: underline; font-weight: 700;">\${skTanggalHijriah}</td>
+                    <td style="font-weight: normal;">Tanggal</td>
+                    <td style="text-align: center; font-weight: normal;">:</td>
+                    <td style="text-decoration: underline; font-weight: normal;">${skTanggalHijriah}</td>
                   </tr>
                   <tr>
                     <td></td>
-                    <td style="text-align: center; font-weight: bold;">:</td>
-                    <td style="text-decoration: underline; font-weight: 700;">\${skTanggalMasehi}</td>
+                    <td style="text-align: center; font-weight: normal;">:</td>
+                    <td style="text-decoration: underline; font-weight: normal;">${skTanggalMasehi}</td>
                   </tr>
                 </table>
               </div>
@@ -1343,13 +1386,13 @@ export default function KelulusanTab({
               <div class="sig-row">
                 <div class="sig-col" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 140px;">
                   <div style="font-weight: 700; text-align: center;">Kepala Sekolah Kaderisasi,</div>
-                  \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKepalaSekolahImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 60px;"></div>'}
-                  <div class="sig-name-line">\${skKepalaSekolah}</div>
+                  ${useQrSignatures ? ` <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="${qrKepalaSekolahImg}" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ` : '<div style="height: 60px;"></div>'}
+                  <div class="sig-name-line">${skKepalaSekolah}</div>
                 </div>
                 <div class="sig-col" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 140px;">
                   <div style="font-weight: 700; text-align: center;">Koordinator Instruktur Cabang,</div>
-                  \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKoordinatorImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 60px;"></div>'}
-                  <div class="sig-name-line">\${skKoordinator}</div>
+                  ${useQrSignatures ? ` <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="${qrKoordinatorImg}" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ` : '<div style="height: 60px;"></div>'}
+                  <div class="sig-name-line">${skKoordinator}</div>
                 </div>
               </div>
 
@@ -1359,12 +1402,12 @@ export default function KelulusanTab({
                 <div class="sig-mengetahui-title" style="font-weight: 800;">PIMPINAN CABANG GERAKAN PEMUDA ANSOR</div>
                 <div class="sig-mengetahui-title" style="font-weight: 800; margin-bottom: 3px;">KABUPATEN BOGOR</div>
                 <div style="font-weight: 700; margin-bottom: 3px;">Ketua,</div>
-                \${useQrSignatures ? ' <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="' + qrKetuaImg + '" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ' : '<div style="height: 55px;"></div>'}
-                <div class="sig-name-line">\${skKetua}</div>
+                ${useQrSignatures ? ` <div style="margin: 6px auto; width: 75px; height: 75px; display: flex; align-items: center; justify-content: center;"> <img src="${qrKetuaImg}" style="width: 70px; height: 70px;" alt="QR Code" /> </div> ` : '<div style="height: 55px;"></div>'}
+                <div class="sig-name-line">${skKetua}</div>
               </div>
 
               <!-- Verification & Validation Stamp -->
-              \${useDocumentValidation ? ' <div class="validation-badge"> <div class="validation-qr"> <img src="' + qrValidationImg + '" alt="Validation QR" /> </div> <div class="validation-details"> <div class="validation-title">VALIDASI SISTEM KADERISASI</div> <div class="validation-text"><strong>Operator Cetak:</strong> \${skOperator}</div> <div class="validation-text"><strong>Waktu Cetak:</strong> \${skWaktuCetak}</div> <div class="validation-text"><strong>Status Dokumen:</strong> SAH &amp; TERVERIFIKASI DI DATABASE PC GP ANSOR KABUPATEN BOGOR</div> </div> </div> ' : ''}
+              ${useDocumentValidation ? ` <div class="validation-badge"> <div class="validation-qr"> <img src="${qrValidationImg}" alt="Validation QR" /> </div> <div class="validation-details"> <div class="validation-title">VALIDASI SISTEM KADERISASI</div> <div class="validation-text"><strong>Operator Cetak:</strong> ${skOperator}</div> <div class="validation-text"><strong>Waktu Cetak:</strong> ${skWaktuCetak}</div> <div class="validation-text"><strong>Status Dokumen:</strong> SAH &amp; TERVERIFIKASI DI DATABASE PC GP ANSOR KABUPATEN BOGOR</div> </div> </div> ` : ''}
 
             </div>
 
@@ -2352,6 +2395,45 @@ export default function KelulusanTab({
                       />
                     </div>
                   </div>
+                  
+                  {/* Upload Logo Kop Surat */}
+                  <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-navy-850 space-y-3">
+                    <label className="block text-[9px] font-black text-emerald-600 dark:text-emerald-400 tracking-widest uppercase">LOGO KOP SURAT (SK)</label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-navy-800 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                        {skLogo ? (
+                          <img src={skLogo} className="w-full h-full object-contain" alt="Kop Logo" />
+                        ) : (
+                          <div className="text-center p-1">
+                            <span className="text-[7px] text-slate-400 font-bold">Logo GP Ansor (Default)</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex space-x-2">
+                          <label className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center space-x-1">
+                            <span>Upload Logo Baru</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleCustomImageUpload(e, setSkLogo)}
+                              className="hidden"
+                            />
+                          </label>
+                          {skLogo && (
+                            <button
+                              type="button"
+                              onClick={() => setSkLogo(null)}
+                              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[9px] text-slate-400 font-medium font-sans">Format PNG/JPG transparan direkomendasikan.</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Section 2: Menimbang */}
@@ -2586,15 +2668,45 @@ export default function KelulusanTab({
                 <div className="w-[145mm] min-h-[205mm] bg-white border border-slate-200 dark:border-navy-800 shadow-xl p-6 relative flex flex-col justify-between text-[6px] text-slate-850 leading-normal">
                   <div>
                     {/* Simulated Header */}
-                    <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-3">
-                      <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-slate-100 border border-slate-200 rounded">
-                        <span className="text-[8px] text-emerald-600 font-extrabold">ANSOR</span>
-                      </div>
-                      <div className="flex-1 text-center font-bold">
-                        <div className="text-[7.5px] uppercase">PIMPINAN CABANG</div>
-                        <div className="text-[7.5px] uppercase">GERAKAN PEMUDA ANSOR</div>
-                        <div className="text-[8px] uppercase font-black text-emerald-600">KABUPATEN BOGOR</div>
-                        <div className="text-[4px] font-normal text-slate-500">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                    <div className="flex items-center gap-3 pb-2 mb-3">
+                      {skLogo ? (
+                        <img src={skLogo} className="w-9 h-10 object-contain shrink-0" alt="SK Logo" />
+                      ) : (
+                        <svg viewBox="0 0 120 140" className="w-9 h-10 shrink-0" xmlns="http://www.w3.org/2000/svg">
+                          <polygon points="60,5 115,115 5,115" fill="#008a3c" />
+                          <polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" strokeWidth="2" />
+                          <path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" />
+                          <circle cx="60" cy="72" r="4.5" fill="#ffffff" />
+                          <line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" strokeWidth="1.2" />
+
+                          {/* Stars */}
+                          <polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" />
+                          <polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" />
+                          <polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" />
+                          <polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" />
+                          <polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" />
+                          <polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" />
+                          <polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" />
+                          <polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" />
+                          <polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" />
+
+                          <rect x="15" y="103" width="90" height="15" fill="#008a3c" />
+                          <text x="60" y="115" fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="900" fontSize="11" fill="#ffffff" textAnchor="middle" letterSpacing="1">ANSOR</text>
+                        </svg>
+                      )}
+                      <div className="flex-1 text-right font-bold">
+                        <div className="text-[7.5px] uppercase tracking-wider font-extrabold text-black">PIMPINAN CABANG</div>
+                        <div className="text-[7.5px] uppercase tracking-wider font-extrabold text-black">GERAKAN PEMUDA ANSOR</div>
+                        <div className="text-[8px] uppercase tracking-widest font-black text-black">KABUPATEN BOGOR</div>
+                        <div className="text-[4.2px] font-medium text-slate-700 mt-0.5">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                        <div className="text-[4px] font-medium text-slate-700">Website: <span className="text-sky-600 underline">ansorbogoronline.or.id</span> | email: <span className="text-sky-600 underline">ansorbogoronline@gmail.com</span></div>
                       </div>
                     </div>
 
@@ -2671,20 +2783,50 @@ export default function KelulusanTab({
                 <div className="w-[145mm] min-h-[205mm] bg-white border border-slate-200 dark:border-navy-800 shadow-xl p-6 relative flex flex-col justify-between text-[6px] text-slate-850 leading-normal">
                   <div>
                     {/* Simulated Header */}
-                    <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-3">
-                      <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-slate-100 border border-slate-200 rounded">
-                        <span className="text-[8px] text-emerald-600 font-extrabold">ANSOR</span>
-                      </div>
-                      <div className="flex-1 text-center font-bold">
-                        <div className="text-[7.5px] uppercase">PIMPINAN CABANG</div>
-                        <div className="text-[7.5px] uppercase">GERAKAN PEMUDA ANSOR</div>
-                        <div className="text-[8px] uppercase font-black text-emerald-600">KABUPATEN BOGOR</div>
-                        <div className="text-[4px] font-normal text-slate-500">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                    <div className="flex items-center gap-3 pb-2 mb-3">
+                      {skLogo ? (
+                        <img src={skLogo} className="w-9 h-10 object-contain shrink-0" alt="SK Logo" />
+                      ) : (
+                        <svg viewBox="0 0 120 140" className="w-9 h-10 shrink-0" xmlns="http://www.w3.org/2000/svg">
+                          <polygon points="60,5 115,115 5,115" fill="#008a3c" />
+                          <polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" strokeWidth="2" />
+                          <path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" />
+                          <circle cx="60" cy="72" r="4.5" fill="#ffffff" />
+                          <line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                          <line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" strokeWidth="1.2" />
+                          <line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" strokeWidth="1.2" />
+
+                          {/* Stars */}
+                          <polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" />
+                          <polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" />
+                          <polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" />
+                          <polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" />
+                          <polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" />
+                          <polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" />
+                          <polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" />
+                          <polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" />
+                          <polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" />
+
+                          <rect x="15" y="103" width="90" height="15" fill="#008a3c" />
+                          <text x="60" y="115" fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="900" fontSize="11" fill="#ffffff" textAnchor="middle" letterSpacing="1">ANSOR</text>
+                        </svg>
+                      )}
+                      <div className="flex-1 text-right font-bold">
+                        <div className="text-[7.5px] uppercase tracking-wider font-extrabold text-black">PIMPINAN CABANG</div>
+                        <div className="text-[7.5px] uppercase tracking-wider font-extrabold text-black">GERAKAN PEMUDA ANSOR</div>
+                        <div className="text-[8px] uppercase tracking-widest font-black text-black">KABUPATEN BOGOR</div>
+                        <div className="text-[4.2px] font-medium text-slate-700 mt-0.5">Jl.Bina Citra No.05 Kel Tengah Kec. Cibinong Kab. Bogor Telp: 08787264414</div>
+                        <div className="text-[4px] font-medium text-slate-700">Website: <span className="text-sky-600 underline">ansorbogoronline.or.id</span> | email: <span className="text-sky-600 underline">ansorbogoronline@gmail.com</span></div>
                       </div>
                     </div>
 
                     {/* Continuing menetapkan points */}
-                    <table className="w-full text-[5.5px] mt-4">
+                    <table className="w-full text-[6.5px] mt-4">
                       <tbody>
                         <tr>
                           <td className="w-16 font-extrabold align-top opacity-0">MENETAPKAN</td>
@@ -2698,7 +2840,7 @@ export default function KelulusanTab({
                     </table>
 
                     {/* Meta dates on right */}
-                    <div className="w-28 ml-auto text-[5.5px] border-t border-slate-200 pt-2 mt-4 space-y-0.5">
+                    <div className="w-28 ml-auto text-[6.5px] border-t border-slate-200 pt-2 mt-4 space-y-0.5">
                       <div className="flex justify-between">
                         <span>Ditetapkan</span>
                         <span>: {skDitetapkan}</span>
@@ -2773,7 +2915,7 @@ export default function KelulusanTab({
 
                     {/* Simulated Validation Badge in Preview */}
                     {useDocumentValidation && (
-                      <div className="mt-3 border border-dashed border-emerald-500/40 bg-emerald-50/50 p-1.5 rounded-lg flex items-center gap-1.5 text-[4px] leading-tight text-slate-800">
+                      <div className="absolute bottom-[39px] left-6 max-w-[190px] border border-dashed border-emerald-500 bg-emerald-50/70 p-1.5 rounded-lg flex items-center gap-1.5 text-[4px] leading-tight text-slate-800">
                         <div className="w-8 h-8 bg-white border border-slate-200 p-0.5 rounded shrink-0 flex items-center justify-center relative overflow-hidden">
                           {previewQrValidation ? (
                             <img src={previewQrValidation} className="w-full h-full object-contain animate-fadeIn" alt="Validation QR" />
@@ -2782,7 +2924,7 @@ export default function KelulusanTab({
                           )}
                         </div>
                         <div className="flex-1 text-left">
-                          <div className="font-black text-emerald-700 text-[4.5px] tracking-wider border-b border-emerald-500/20 pb-0.5 mb-0.5">VALIDASI SISTEM KADERISASI</div>
+                          <div className="font-black text-emerald-700 text-[4.5px] tracking-wider border-b border-emerald-500 pb-0.5 mb-0.5">VALIDASI SISTEM KADERISASI</div>
                           <div><strong>Operator:</strong> {skOperator}</div>
                           <div><strong>Waktu:</strong> {skWaktuCetak}</div>
                           <div className="text-emerald-800 font-bold">✔ Dokumen Sah & Terverifikasi</div>
@@ -2824,7 +2966,7 @@ export default function KelulusanTab({
                   setSkMemperhatikanB('Rapat Dewan Instruktur Cabang mengenai kelayakan kelulusan peserta PKD Angkatan XXIX Pimpinan Cabang Gerakan Pemuda Ansor Kabupaten Bogor pada tanggal 27 Juni 2026');
                   setSkMemperhatikanC('Mendengarkan saran dan masukan dari Pimpinan Anak Cabang Gerakan Pemuda Ansor Kecamatan Cileungsi Kabupaten Bogor');
                   setSkDitetapkan('Di Cileungsi');
-                  setSkTanggalHijriah('12 Muharrom 1448H');
+                  setSkTanggalHijriah('11/12 Muharrom 1448H');
                   setSkTanggalMasehi('28 Juni 2026 M');
                   setSkKepalaSekolah('HAMDANI M MALIK, S.E');
                   setSkKoordinator('SEPTA AJI., S.KOM');
