@@ -54,6 +54,7 @@ export default function CustomTab({
 
   const [copied, setCopied] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [showSqlInstructions, setShowSqlInstructions] = useState(false);
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
@@ -391,36 +392,47 @@ export default function CustomTab({
       </div>
 
       {/* SQL Setup Instructions Block (High Usability) */}
-      <div className="bg-white dark:bg-slate-900 rounded-[20px] p-6 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350 space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b dark:border-navy-850 pb-3">
-          <div>
-            <h4 className="text-sm font-black text-navy-900 dark:text-white uppercase tracking-widest flex items-center space-x-2">
-              <Database className="w-4.5 h-4.5 text-emerald-500" />
-              <span>Instruksi Inisialisasi SQL Schema Supabase</span>
-            </h4>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase font-bold">Copy dan jalankan script SQL di bawah pada SQL Editor Supabase Anda.</p>
-          </div>
-
+      <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350">
+        <div className="flex items-center justify-between">
           <button
-            onClick={handleCopySql}
-            className="flex items-center space-x-1.5 px-4.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition shadow-sm active:scale-[0.98] shrink-0"
+            type="button"
+            onClick={() => setShowSqlInstructions(!showSqlInstructions)}
+            className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 font-extrabold text-xs uppercase tracking-wider transition-colors duration-200"
           >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Teks Disalin!' : 'Copy SQL Schema'}</span>
+            <Database className="w-4 h-4 text-emerald-500" />
+            <span>{showSqlInstructions ? 'Sembunyikan' : 'Tampilkan'} Instruksi SQL Schema Supabase</span>
           </button>
+          
+          {showSqlInstructions && (
+            <button
+              onClick={handleCopySql}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span>{copied ? 'Teks Disalin!' : 'Copy SQL Schema'}</span>
+            </button>
+          )}
         </div>
 
-        {toastMsg && (
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-xs text-center font-bold">
-            {toastMsg}
+        {showSqlInstructions && (
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-navy-850 space-y-4 animate-fadeIn">
+            <div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Copy dan jalankan script SQL di bawah pada SQL Editor Supabase Anda untuk inisialisasi tabel.</p>
+            </div>
+
+            {toastMsg && (
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-xs text-center font-bold">
+                {toastMsg}
+              </div>
+            )}
+
+            <div className="relative">
+              <pre className="p-4 bg-slate-950 dark:bg-slate-950 border border-slate-850/50 rounded-xl overflow-x-auto text-[10px] font-mono text-slate-300 max-h-64 custom-scrollbar">
+                <code>{SUPABASE_SQL_SCHEMA}</code>
+              </pre>
+            </div>
           </div>
         )}
-
-        <div className="relative">
-          <pre className="p-4 bg-slate-950 dark:bg-slate-950 border border-slate-850/50 rounded-xl overflow-x-auto text-[10px] font-mono text-slate-300 max-h-64 custom-scrollbar">
-            <code>{SUPABASE_SQL_SCHEMA}</code>
-          </pre>
-        </div>
       </div>
 
     </div>

@@ -4,14 +4,22 @@ import { safeStorage } from './utils/storage';
 
 // Check local storage for dynamic connection keys first, otherwise fallback to Vite env variables
 let cachedSupabaseClient: SupabaseClient | null = null;
+let apiEnvUrl = '';
+let apiEnvKey = '';
+
+export function setApiEnvKeys(url: string, key: string) {
+  apiEnvUrl = url;
+  apiEnvKey = key;
+  cachedSupabaseClient = null; // Reset client to force recreation with new keys
+}
 
 export function getSupabaseKeys() {
   const customUrl = safeStorage.getItem('SIANSOR_SUPABASE_URL');
   const customKey = safeStorage.getItem('SIANSOR_SUPABASE_KEY');
   const meta = (import.meta as any);
   
-  const envUrl = (meta.env ? (meta.env.VITE_SUPABASE_URL as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_URL as string) : '') || '';
-  const envKey = (meta.env ? (meta.env.VITE_SUPABASE_ANON_KEY as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_ANON_KEY as string) : '') || '';
+  const envUrl = apiEnvUrl || (meta.env ? (meta.env.VITE_SUPABASE_URL as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_URL as string) : '') || '';
+  const envKey = apiEnvKey || (meta.env ? (meta.env.VITE_SUPABASE_ANON_KEY as string) : '') || (typeof process !== 'undefined' && process.env ? (process.env.VITE_SUPABASE_ANON_KEY as string) : '') || '';
 
   return {
     url: customUrl || envUrl,

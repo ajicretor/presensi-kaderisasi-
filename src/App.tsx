@@ -27,6 +27,7 @@ import { safeStorage } from './utils/storage';
 import {
   getSupabaseClient,
   getSupabaseKeys,
+  setApiEnvKeys,
   resetSupabaseClient,
   fetchAllFromSupabase,
   syncPeserta,
@@ -143,14 +144,30 @@ export default function App() {
       }
     }
 
-    // Try starting real-time connection to Supabase
-    const { isCustom, isEnv } = getSupabaseKeys();
-    const mode = isCustom ? 'custom' : (isEnv ? 'env' : 'none');
-    setSupabaseMode(mode);
+    // Fetch dynamic configuration from the backend to support runtime container variables, then initialize connection
+    const initConnection = async () => {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const config = await res.json();
+          if (config.supabaseUrl && config.supabaseKey) {
+            setApiEnvKeys(config.supabaseUrl, config.supabaseKey);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch runtime backend configuration:", e);
+      }
 
-    if (mode !== 'none') {
-      triggerSupabaseSync();
-    }
+      const { isCustom, isEnv } = getSupabaseKeys();
+      const mode = isCustom ? 'custom' : (isEnv ? 'env' : 'none');
+      setSupabaseMode(mode);
+
+      if (mode !== 'none') {
+        triggerSupabaseSync();
+      }
+    };
+
+    initConnection();
   }, []);
 
   const triggerSupabaseSync = async () => {
