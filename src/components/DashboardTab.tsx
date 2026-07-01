@@ -241,7 +241,7 @@ export default function DashboardTab({
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <h4 className="font-extrabold text-slate-800 dark:text-white uppercase tracking-wider text-[11px]">Koneksi Supabase Cloud</h4>
               <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded ${supabaseConnected ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-                {supabaseConnected ? 'AKTIF (REAL-TIME)' : 'OFFLINE (LOKAL)'}
+                {supabaseConnected ? 'ONLINE (REAL-TIME)' : 'OFFLINE (LOKAL)'}
               </span>
               {isSyncing && (
                 <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-indigo-500 text-white animate-pulse flex items-center space-x-1">

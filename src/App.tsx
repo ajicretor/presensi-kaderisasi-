@@ -1022,7 +1022,7 @@ export default function App() {
                 : 'bg-amber-50 border-amber-250/20 text-amber-500 dark:bg-amber-950/20'
             }`}>
               <span className={`h-1.5 w-1.5 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-              <span>{supabaseConnected ? 'Supabase Sync Active' : 'Offline Mode'}</span>
+              <span>{supabaseConnected ? 'Online Mode' : 'Offline Mode'}</span>
             </span>
           </div>
         </header>

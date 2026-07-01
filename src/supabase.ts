@@ -152,6 +152,47 @@ CREATE TABLE IF NOT EXISTS rekap_kelulusan (
 ALTER TABLE rekap_kelulusan DISABLE ROW LEVEL SECURITY;
 `;
 
+// Helper function to query with retry in case of database cold start or statement timeout
+async function queryWithRetry(queryFn: () => PromiseLike<any> | any, retries = 3, delayMs = 1500): Promise<any> {
+  let lastResult: any = null;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      lastResult = await queryFn();
+      if (!lastResult.error) {
+        return lastResult;
+      }
+      
+      const errMsg = lastResult.error.message?.toLowerCase() || '';
+      const errCode = lastResult.error.code;
+
+      console.warn(`Query attempt ${attempt + 1} failed:`, lastResult.error);
+
+      // If it is a known schema missing table error (42P01) or Auth error (invalid apikey, etc.), do not retry
+      if (
+        errCode === '42P01' || 
+        (errMsg.includes('relation') && errMsg.includes('does not exist')) ||
+        errMsg.includes('apikey') || 
+        errMsg.includes('invalid') ||
+        errMsg.includes('jwt') ||
+        lastResult.error.status === 401 ||
+        lastResult.error.status === 403 ||
+        errCode === 'PGRST111'
+      ) {
+        return lastResult;
+      }
+    } catch (e: any) {
+      lastResult = { error: { message: e.message || String(e), code: 'EXCEPTION' } };
+      console.warn(`Query attempt ${attempt + 1} threw exception:`, e);
+    }
+    
+    // Wait before next attempt
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  return lastResult;
+}
+
 // Robust upsert helper that can dynamically strip non-existent columns (perfect for old database schemas)
 async function robustUpsert(client: any, tableName: string, rows: any[]): Promise<boolean> {
   if (rows.length === 0) return true;
@@ -206,8 +247,8 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
   try {
     if (data.length === 0) return true;
 
-    // Fetch existing peserta list from Supabase for differential synchronization
-    const { data: existing, error: fetchError } = await client.from('peserta').select('*');
+    // Fetch existing peserta list from Supabase for differential synchronization with retry
+    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('peserta').select('*'));
     if (fetchError) {
       console.warn("Error fetching existing peserta, falling back to full robust upsert:", fetchError);
       const rows = data.map(p => ({
@@ -338,8 +379,8 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
   try {
     if (data.length === 0) return true;
 
-    // Fetch existing sesi list
-    const { data: existing, error: fetchError } = await client.from('sesi').select('*');
+    // Fetch existing sesi list with retry
+    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('sesi').select('*'));
     if (fetchError) {
       console.warn("Error fetching existing sesi, falling back to full robust upsert:", fetchError);
       const rows = data.map(s => ({
@@ -449,8 +490,8 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
   if (!client) return false;
 
   try {
-    // 1. Fetch existing presensi from Supabase for differential synchronization
-    const { data: existing, error: fetchError } = await client.from('presensi').select('*');
+    // 1. Fetch existing presensi from Supabase for differential synchronization with retry
+    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('presensi').select('*'));
     if (fetchError) {
       console.warn("Error fetching existing presensi, falling back to full wipe & re-write:", fetchError);
       const { error: delError } = await client.from('presensi').delete().neq('id', 'CONCRETE_PLACEHOLDER_IMPROVEMENT');
@@ -741,19 +782,12 @@ export async function fetchAllFromSupabase(): Promise<any> {
   }
 
   try {
-    const [
-      resPeserta,
-      resSesi,
-      resPresensi,
-      resTim,
-      resBranding
-    ] = await Promise.all([
-      client.from('peserta').select('*'),
-      client.from('sesi').select('*').order('num', { ascending: true }),
-      client.from('presensi').select('*'),
-      client.from('tim').select('*'),
-      client.from('branding').select('*').eq('id', 1).maybeSingle()
-    ]);
+    // Fetch all sequentially with robust retry mechanisms to prevent connection pool exhaustion and database cold starts
+    const resPeserta = await queryWithRetry(() => client.from('peserta').select('*'));
+    const resSesi = await queryWithRetry(() => client.from('sesi').select('*').order('num', { ascending: true }));
+    const resPresensi = await queryWithRetry(() => client.from('presensi').select('*'));
+    const resTim = await queryWithRetry(() => client.from('tim').select('*'));
+    const resBranding = await queryWithRetry(() => client.from('branding').select('*').eq('id', 1).maybeSingle());
 
     // Check for auth errors first
     const allErrors = [resPeserta.error, resSesi.error, resPresensi.error, resTim.error, resBranding.error];
@@ -893,7 +927,7 @@ export async function syncRekapKelulusan(data: {
     // Check if the rekap_kelulusan table exists
     let hasTable = true;
     try {
-      const { error: checkError } = await client.from('rekap_kelulusan').select('id').limit(1);
+      const { error: checkError } = await queryWithRetry(() => client.from('rekap_kelulusan').select('id').limit(1));
       if (checkError && (checkError.code === '42P01' || checkError.message?.toLowerCase().includes('relation'))) {
         hasTable = false;
       }
