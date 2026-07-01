@@ -19,7 +19,8 @@ import {
   HelpCircle,
   CheckCircle,
   AlertTriangle,
-  Printer
+  Printer,
+  RefreshCw
 } from 'lucide-react';
 
 import { Peserta, Sesi, Presensi, Tim, Branding, SystemState } from './types';
@@ -85,7 +86,7 @@ export default function App() {
   // Supabase State
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [supabaseMode, setSupabaseMode] = useState<'env' | 'custom' | 'none'>('none');
-  const [supabaseError, setSupabaseError] = useState<'auth' | 'schema' | null>(null);
+  const [supabaseError, setSupabaseError] = useState<'auth' | 'schema' | 'connection' | null>(null);
   const [supabaseErrorDetail, setSupabaseErrorDetail] = useState<string>('');
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -200,6 +201,12 @@ export default function App() {
                 "Tabel Database Belum Siap",
                 `Koneksi berhasil, tetapi beberapa tabel tidak ditemukan atau bermasalah. ${errorDetails ? `[Detail: ${errorDetails}]` : ''}. Silakan salin & jalankan script SQL Schema di tab 'Kustomisasi Aplikasi' pada SQL Editor Supabase Anda untuk membuat semua tabel yang diperlukan!`,
                 "warning"
+              );
+            } else if (data.errorType === 'connection') {
+              triggerAlert(
+                "Gangguan Koneksi Supabase",
+                `Terjadi masalah koneksi atau error internal saat menghubungi database Supabase Anda. ${errorDetails ? `[Detail: ${errorDetails}]` : ''}`,
+                "danger"
               );
             }
           }
@@ -1347,6 +1354,26 @@ export default function App() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL SINKRONISASI LOADING OVERLAY */}
+      {isSyncing && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xs shadow-2xl p-6 border border-slate-200 dark:border-navy-850 text-center space-y-4">
+            <div className="mx-auto w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/10 flex items-center justify-center">
+              <RefreshCw className="w-7 h-7 animate-spin text-emerald-500" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest animate-pulse">Menghubungkan Database</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
+                Sedang menyinkronkan data presensi & silabus dengan basis data cloud Supabase...
+              </p>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-navy-950 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-emerald-500 h-full w-2/3 rounded-full animate-pulse"></div>
+            </div>
           </div>
         </div>
       )}

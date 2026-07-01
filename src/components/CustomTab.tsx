@@ -9,7 +9,7 @@ interface CustomTabProps {
   onSaveSupabaseKeys: (url: string, key: string) => void;
   supabaseConnected: boolean;
   supabaseMode: 'env' | 'custom' | 'none';
-  supabaseError: 'auth' | 'schema' | null;
+  supabaseError: 'auth' | 'schema' | 'connection' | null;
   supabaseErrorDetail?: string;
   onForceUpload?: () => void;
   onForceDownload?: () => void;
@@ -53,6 +53,12 @@ export default function CustomTab({
   const keys = getSupabaseKeys();
   const [sbUrl, setSbUrl] = useState(keys.url);
   const [sbKey, setSbKey] = useState(keys.key);
+
+  React.useEffect(() => {
+    const k = getSupabaseKeys();
+    setSbUrl(k.url);
+    setSbKey(k.key);
+  }, [supabaseMode]);
 
   const [copied, setCopied] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -327,7 +333,7 @@ export default function CustomTab({
                     </button>
                   )}
                 </div>
-                <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                 <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
                   <div className={`w-3 h-3 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : (supabaseError ? 'bg-rose-500 animate-bounce' : 'bg-amber-500')}`}></div>
                   <span>
                     {supabaseConnected 
@@ -336,7 +342,10 @@ export default function CustomTab({
                           ? 'Offline: Kunci API / URL tidak valid' 
                           : (supabaseError === 'schema' 
                               ? 'Offline: Tabel database belum dibuat' 
-                              : 'Offline: Menggunakan database local memory/localStorage'
+                              : (supabaseError === 'connection'
+                                  ? 'Offline: Gagal terhubung (Gangguan Koneksi)'
+                                  : 'Offline: Menggunakan database local memory/localStorage'
+                                )
                             )
                         )
                     }
@@ -357,6 +366,16 @@ export default function CustomTab({
                     ⚠️ Tabel Belum Siap: Koneksi berhasil tetapi beberapa tabel tidak ditemukan. Salin dan jalankan script SQL Schema di bawah pada tab SQL Editor Supabase Anda!
                     {supabaseErrorDetail && (
                       <div className="mt-1 font-mono text-[9px] text-amber-500 opacity-90 border-t border-amber-100 dark:border-amber-900/40 pt-1">
+                        Detail: {supabaseErrorDetail}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {supabaseError === 'connection' && (
+                  <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
+                    ⚠️ Gangguan Koneksi: Terjadi kesalahan koneksi atau DNS ketika menghubungi database Supabase Anda. Periksa internet atau isian URL/API Key Anda.
+                    {supabaseErrorDetail && (
+                      <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
                         Detail: {supabaseErrorDetail}
                       </div>
                     )}

@@ -733,7 +733,12 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
 
 export async function fetchAllFromSupabase(): Promise<any> {
   const client = getSupabaseClient();
-  if (!client) return null;
+  if (!client) {
+    return {
+      errorType: 'auth',
+      errors: [{ message: 'Kunci API atau URL Supabase belum diatur.' }]
+    };
+  }
 
   try {
     const [
@@ -786,8 +791,20 @@ export async function fetchAllFromSupabase(): Promise<any> {
     // Now we know core tables are fully available and connected!
     // What if auxiliary tables (tim, branding) are missing or errored? That's fine! We'll just fallback to local data.
     const peserta = resPeserta.data || [];
-    const sesi = resSesi.data || [];
+    const rawSesi = resSesi.data || [];
     const presensi = resPresensi.data || [];
+
+    // Normalize Sesi column casing
+    const sesi = rawSesi.map((s: any) => ({
+      num: s.num,
+      materi: s.materi || '',
+      instruktur: s.instruktur || '',
+      startTime: s.startTime || s.starttime || '08:00',
+      duration: s.duration !== undefined ? s.duration : 90,
+      maxLate: s.maxLate !== undefined ? s.maxLate : (s.maxlate !== undefined ? s.maxlate : 10),
+      toiletLimit: s.toiletLimit !== undefined ? s.toiletLimit : (s.toiletlimit !== undefined ? s.toiletlimit : 5),
+      active: s.active !== undefined ? s.active : false
+    }));
     
     // Fallback for tim if missing or errored
     let tim = [];
@@ -835,9 +852,12 @@ export async function fetchAllFromSupabase(): Promise<any> {
       } : null,
       auxiliaryMissing: !!(resTim.error || resBranding.error)
     };
-  } catch (e) {
+  } catch (e: any) {
     console.error("Failed to fetch all data from Supabase:", e);
-    return null;
+    return {
+      errorType: 'connection',
+      errors: [{ message: e.message || String(e) }]
+    };
   }
 }
 
