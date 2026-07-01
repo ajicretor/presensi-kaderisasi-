@@ -86,6 +86,8 @@ export default function App() {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [supabaseMode, setSupabaseMode] = useState<'env' | 'custom' | 'none'>('none');
   const [supabaseError, setSupabaseError] = useState<'auth' | 'schema' | null>(null);
+  const [supabaseErrorDetail, setSupabaseErrorDetail] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // System Database Content State
   const [peserta, setPeserta] = useState<Peserta[]>(DEFAULT_PESERTA);
@@ -171,114 +173,132 @@ export default function App() {
   }, []);
 
   const triggerSupabaseSync = async () => {
-    const data = await fetchAllFromSupabase();
-    if (data) {
-      if (data.errorType) {
-        setSupabaseConnected(false);
-        setSupabaseError(data.errorType);
-        if (data.errorType === 'auth') {
-          triggerAlert(
-            "Koneksi Supabase Gagal",
-            "Kunci API (Anon Key) atau URL Supabase Anda tidak valid. Silakan periksa kembali konfigurasi Anda di tab 'Kustomisasi'.",
-            "danger"
-          );
-        } else if (data.errorType === 'schema') {
-          triggerAlert(
-            "Tabel Database Belum Siap",
-            "Koneksi berhasil, namun beberapa tabel database tidak ditemukan. Silakan salin & jalankan script SQL Schema di bagian bawah tab 'Kustomisasi Aplikasi' pada SQL Editor Supabase Anda!",
-            "warning"
-          );
-        }
-        return;
-      }
+    setIsSyncing(true);
+    try {
+      const data = await fetchAllFromSupabase();
+      if (data) {
+        if (data.errorType) {
+          setSupabaseConnected(false);
+          setSupabaseError(data.errorType);
+          
+          // Formulate a clean error description from returned errors
+          const errorDetails = data.errors && Array.isArray(data.errors) 
+            ? data.errors.map((e: any) => `${e.message || 'Error'} (Code: ${e.code || 'unknown'})`).join(', ')
+            : '';
 
-      setSupabaseConnected(true);
-      setSupabaseError(null);
+          setSupabaseErrorDetail(errorDetails);
 
-      // Cek apakah database Supabase kosong (misal baru dibuat atau di-reset)
-      const isCloudEmpty = (!data.peserta || data.peserta.length === 0) && 
-                           (!data.sesi || data.sesi.length === 0) &&
-                           (!data.presensi || data.presensi.length === 0);
-      
-      const localDataStr = safeStorage.getItem('SIANSOR_STATE_V7');
-      let localDataParsed: any = null;
-      if (localDataStr) {
-        try {
-          localDataParsed = JSON.parse(localDataStr);
-        } catch (e) {
-          console.error("Local data parse error:", e);
+          if (currentUser) {
+            if (data.errorType === 'auth') {
+              triggerAlert(
+                "Koneksi Supabase Gagal",
+                `Kunci API (Anon Key) atau URL Supabase Anda tidak valid. Silakan periksa kembali konfigurasi Anda. ${errorDetails ? `[Detail: ${errorDetails}]` : ''}`,
+                "danger"
+              );
+            } else if (data.errorType === 'schema') {
+              triggerAlert(
+                "Tabel Database Belum Siap",
+                `Koneksi berhasil, tetapi beberapa tabel tidak ditemukan atau bermasalah. ${errorDetails ? `[Detail: ${errorDetails}]` : ''}. Silakan salin & jalankan script SQL Schema di tab 'Kustomisasi Aplikasi' pada SQL Editor Supabase Anda untuk membuat semua tabel yang diperlukan!`,
+                "warning"
+              );
+            }
+          }
+          return;
         }
-      }
 
-      const hasLocalData = localDataParsed && (
-        (localDataParsed.peserta && localDataParsed.peserta.length > 0) ||
-        (localDataParsed.sesi && localDataParsed.sesi.length > 0) ||
-        (localDataParsed.presensi && localDataParsed.presensi.length > 0) ||
-        (localDataParsed.tim && localDataParsed.tim.length > 1) ||
-        (localDataParsed.branding && localDataParsed.branding.appName !== DEFAULT_BRANDING.appName)
-      );
+        setSupabaseConnected(true);
+        setSupabaseError(null);
+        setSupabaseErrorDetail('');
 
-      // Jika database Cloud kosong dan ada data lokal di browser, unggah data lokal ke Cloud (Upward Sync)
-      if (isCloudEmpty && hasLocalData) {
-        if (localDataParsed.peserta && localDataParsed.peserta.length > 0) {
-          await syncPeserta(localDataParsed.peserta);
-          setPeserta(localDataParsed.peserta);
-        }
-        if (localDataParsed.sesi && localDataParsed.sesi.length > 0) {
-          await syncSesi(localDataParsed.sesi);
-          setSesi(localDataParsed.sesi);
-        }
-        if (localDataParsed.presensi && localDataParsed.presensi.length > 0) {
-          await syncPresensi(localDataParsed.presensi);
-          setPresensi(localDataParsed.presensi);
-        }
-        if (localDataParsed.tim && localDataParsed.tim.length > 0) {
-          await syncTim(localDataParsed.tim);
-          setTim(localDataParsed.tim);
-        }
-        if (localDataParsed.branding) {
-          await syncBranding(localDataParsed.branding);
-          setBranding(localDataParsed.branding);
-        }
+        // Cek apakah database Supabase kosong (misal baru dibuat atau di-reset)
+        const isCloudEmpty = (!data.peserta || data.peserta.length === 0) && 
+                             (!data.sesi || data.sesi.length === 0) &&
+                             (!data.presensi || data.presensi.length === 0);
         
-        triggerAlert("Sinkronisasi Berhasil", "Data lokal Anda telah diunggah ke database Supabase Cloud yang kosong!", "success");
-      } else {
-        // Jika database Cloud sudah memiliki data, gunakan data Cloud (Downward Sync)
-        setPeserta(data.peserta || []);
-        setSesi(data.sesi || []);
-        setPresensi(data.presensi || []);
-        setTim(data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM);
-        
-        let finalBranding = data.branding || branding;
-        if (finalBranding && (
-          !finalBranding.logo || 
-          finalBranding.logo.includes('stroke-width="9"') || 
-          finalBranding.logo.includes('M30 40')
-        )) {
-          finalBranding = {
-            ...finalBranding,
-            logo: DEFAULT_BRANDING.logo
+        const localDataStr = safeStorage.getItem('SIANSOR_STATE_V7');
+        let localDataParsed: any = null;
+        if (localDataStr) {
+          try {
+            localDataParsed = JSON.parse(localDataStr);
+          } catch (e) {
+            console.error("Local data parse error:", e);
+          }
+        }
+
+        const hasLocalData = localDataParsed && (
+          (localDataParsed.peserta && localDataParsed.peserta.length > 0) ||
+          (localDataParsed.sesi && localDataParsed.sesi.length > 0) ||
+          (localDataParsed.presensi && localDataParsed.presensi.length > 0) ||
+          (localDataParsed.tim && localDataParsed.tim.length > 1) ||
+          (localDataParsed.branding && localDataParsed.branding.appName !== DEFAULT_BRANDING.appName)
+        );
+
+        // Jika database Cloud kosong dan ada data lokal di browser, unggah data lokal ke Cloud (Upward Sync)
+        if (isCloudEmpty && hasLocalData) {
+          if (localDataParsed.peserta && localDataParsed.peserta.length > 0) {
+            await syncPeserta(localDataParsed.peserta);
+            setPeserta(localDataParsed.peserta);
+          }
+          if (localDataParsed.sesi && localDataParsed.sesi.length > 0) {
+            await syncSesi(localDataParsed.sesi);
+            setSesi(localDataParsed.sesi);
+          }
+          if (localDataParsed.presensi && localDataParsed.presensi.length > 0) {
+            await syncPresensi(localDataParsed.presensi);
+            setPresensi(localDataParsed.presensi);
+          }
+          if (localDataParsed.tim && localDataParsed.tim.length > 0) {
+            await syncTim(localDataParsed.tim);
+            setTim(localDataParsed.tim);
+          }
+          if (localDataParsed.branding) {
+            await syncBranding(localDataParsed.branding);
+            setBranding(localDataParsed.branding);
+          }
+          
+          triggerAlert("Sinkronisasi Berhasil", "Data lokal Anda telah diunggah ke database Supabase Cloud yang kosong!", "success");
+        } else {
+          // Jika database Cloud sudah memiliki data, gunakan data Cloud (Downward Sync)
+          setPeserta(data.peserta || []);
+          setSesi(data.sesi || []);
+          setPresensi(data.presensi || []);
+          setTim(data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM);
+          
+          let finalBranding = data.branding || branding;
+          if (finalBranding && (
+            !finalBranding.logo || 
+            finalBranding.logo.includes('stroke-width="9"') || 
+            finalBranding.logo.includes('M30 40')
+          )) {
+            finalBranding = {
+              ...finalBranding,
+              logo: DEFAULT_BRANDING.logo
+            };
+            await syncBranding(finalBranding);
+          }
+          setBranding(finalBranding);
+
+          // Simpan data dari Cloud ke Local Storage agar sinkron
+          const current = {
+            peserta: data.peserta || [],
+            sesi: data.sesi || [],
+            presensi: data.presensi || [],
+            tim: data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM,
+            activeSesiId,
+            branding: finalBranding,
           };
-          await syncBranding(finalBranding);
+          safeStorage.setItem('SIANSOR_STATE_V7', JSON.stringify(current));
+
+          triggerAlert("Sync Berhasil", "Basis data disinkronkan sepenuhnya dari Supabase Cloud!", "success");
         }
-        setBranding(finalBranding);
-
-        // Simpan data dari Cloud ke Local Storage agar sinkron
-        const current = {
-          peserta: data.peserta || [],
-          sesi: data.sesi || [],
-          presensi: data.presensi || [],
-          tim: data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM,
-          activeSesiId,
-          branding: finalBranding,
-        };
-        safeStorage.setItem('SIANSOR_STATE_V7', JSON.stringify(current));
-
-        triggerAlert("Sync Berhasil", "Basis data disinkronkan sepenuhnya dari Supabase Cloud!", "success");
+      } else {
+        setSupabaseConnected(false);
+        setSupabaseError(null);
       }
-    } else {
-      setSupabaseConnected(false);
-      setSupabaseError(null);
+    } catch (e) {
+      console.error("Sync error:", e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -743,6 +763,10 @@ export default function App() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           triggerAlert("Akses Diterima", `Ahlan Wa Sahlan, Sahabat ${user.nama}!`, "success");
+          // Automatically trigger sync immediately upon login
+          setTimeout(() => {
+            triggerSupabaseSync();
+          }, 100);
         }}
       />
     );
@@ -1009,6 +1033,8 @@ export default function App() {
               onResetCache={handleResetCache}
               supabaseConnected={supabaseConnected}
               supabaseMode={supabaseMode}
+              onRetrySync={triggerSupabaseSync}
+              isSyncing={isSyncing}
             />
           )}
 
@@ -1086,6 +1112,7 @@ export default function App() {
               supabaseConnected={supabaseConnected}
               supabaseMode={supabaseMode}
               supabaseError={supabaseError}
+              supabaseErrorDetail={supabaseErrorDetail}
               onForceUpload={handleForceUploadToSupabase}
               onForceDownload={handleForceDownloadFromSupabase}
               onRetrySync={triggerSupabaseSync}

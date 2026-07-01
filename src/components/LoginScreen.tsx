@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, KeyRound, ShieldAlert } from 'lucide-react';
 import { Tim, Branding } from '../types';
+import { getSupabaseClient } from '../supabase';
 
 interface LoginScreenProps {
   tim: Tim[];
@@ -19,7 +20,34 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
+    const checkCredentials = async () => {
+      try {
+        const client = getSupabaseClient();
+        if (client) {
+          // Attempt direct pull for the user from Supabase to handle multi-device credential synchronization immediately
+          const { data, error: dbError } = await client
+            .from('tim')
+            .select('*')
+            .eq('username', username.trim().toLowerCase())
+            .maybeSingle();
+
+          if (data && !dbError) {
+            if (data.password === password) {
+              setLoading(false);
+              onLoginSuccess(data as Tim);
+              return;
+            } else {
+              setLoading(false);
+              setError('Kombinasi username atau password salah.');
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Direct database auth check failed, falling back to cached list:", err);
+      }
+
+      // Offline / cached local fallback list
       const matched = tim.find(
         (t) => t.username.toLowerCase() === username.trim().toLowerCase() && t.password === password
       );
@@ -30,7 +58,12 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
       } else {
         setError('Kombinasi username atau password salah.');
       }
-    }, 850);
+    };
+
+    // Add a small artificial delay for clean animation rhythm and visual transition
+    setTimeout(() => {
+      checkCredentials();
+    }, 400);
   };
 
   // Determine gradient based on branding theme color

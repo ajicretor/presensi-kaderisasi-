@@ -10,6 +10,7 @@ interface CustomTabProps {
   supabaseConnected: boolean;
   supabaseMode: 'env' | 'custom' | 'none';
   supabaseError: 'auth' | 'schema' | null;
+  supabaseErrorDetail?: string;
   onForceUpload?: () => void;
   onForceDownload?: () => void;
   onRetrySync?: () => void;
@@ -22,6 +23,7 @@ export default function CustomTab({
   supabaseConnected,
   supabaseMode,
   supabaseError,
+  supabaseErrorDetail,
   onForceUpload,
   onForceDownload,
   onRetrySync
@@ -343,11 +345,21 @@ export default function CustomTab({
                 {supabaseError === 'auth' && (
                   <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
                     ⚠️ Koneksi Gagal: Kunci API (Anon Key) atau URL Supabase Anda tidak valid. Periksa kembali isian URL & Key di atas!
+                    {supabaseErrorDetail && (
+                      <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
+                        Detail: {supabaseErrorDetail}
+                      </div>
+                    )}
                   </div>
                 )}
                 {supabaseError === 'schema' && (
                   <div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-950/40 p-2.5 rounded-lg leading-relaxed">
                     ⚠️ Tabel Belum Siap: Koneksi berhasil tetapi beberapa tabel tidak ditemukan. Salin dan jalankan script SQL Schema di bawah pada tab SQL Editor Supabase Anda!
+                    {supabaseErrorDetail && (
+                      <div className="mt-1 font-mono text-[9px] text-amber-500 opacity-90 border-t border-amber-100 dark:border-amber-900/40 pt-1">
+                        Detail: {supabaseErrorDetail}
+                      </div>
+                    )}
                   </div>
                 )}
 

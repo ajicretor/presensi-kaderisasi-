@@ -76,6 +76,8 @@ interface DashboardTabProps {
   onResetCache: () => void;
   supabaseConnected: boolean;
   supabaseMode: 'env' | 'custom' | 'none';
+  onRetrySync?: () => void;
+  isSyncing?: boolean;
 }
 
 export default function DashboardTab({
@@ -86,7 +88,9 @@ export default function DashboardTab({
   activeSesiId,
   onResetCache,
   supabaseConnected,
-  supabaseMode
+  supabaseMode,
+  onRetrySync,
+  isSyncing = false
 }: DashboardTabProps) {
   // Stats calculations
   const totalPeserta = peserta.length;
@@ -228,28 +232,53 @@ export default function DashboardTab({
     <div className="space-y-6">
       
       {/* DB Connection Top Warning / Notification */}
-      <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-navy-800 rounded-xl shadow-xs transition-colors duration-350 gap-4">
-        <div className="flex items-center space-x-3 text-xs w-full sm:w-auto">
+      <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-navy-800 rounded-xl shadow-xs transition-colors duration-350 gap-4">
+        <div className="flex items-center space-x-3 text-xs w-full md:w-auto">
           <div className={`p-2 rounded-lg ${supabaseConnected ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500' : 'bg-amber-50 dark:bg-amber-950/20 text-amber-500'}`}>
-            <HeartHandshake className="w-5 h-5 animate-pulse" />
+            <HeartHandshake className={`w-5 h-5 ${isSyncing ? 'animate-bounce' : 'animate-pulse'}`} />
           </div>
           <div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <h4 className="font-extrabold text-slate-800 dark:text-white uppercase tracking-wider text-[11px]">Koneksi Supabase Cloud</h4>
               <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded ${supabaseConnected ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
                 {supabaseConnected ? 'AKTIF (REAL-TIME)' : 'OFFLINE (LOKAL)'}
               </span>
+              {isSyncing && (
+                <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-indigo-500 text-white animate-pulse flex items-center space-x-1">
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                  <span>SINKRONISASI...</span>
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold">
-              {supabaseConnected 
-                ? `Sinkronisasi real-time berhasil menggunakan Supabase database (${supabaseMode === 'env' ? 'Environtment Keys' : 'Kunci Kustom'})` 
-                : 'Menggunakan memori local storage sekuriti tinggi. Hubungkan Supabase di tab Kustomisasi!'
+              {isSyncing
+                ? 'Sedang melakukan sinkronisasi data dengan server cloud Supabase...'
+                : supabaseConnected 
+                  ? `Sinkronisasi real-time berhasil menggunakan Supabase database (${supabaseMode === 'env' ? 'Environment Keys' : 'Kunci Kustom'})` 
+                  : 'Menggunakan memori local storage sekuriti tinggi. Coba hubungkan kembali dengan tombol di kanan!'
               }
             </p>
           </div>
         </div>
-        <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black text-right tracking-widest shrink-0">
-          PC GP ANSOR BOGOR &copy; 2026
+        <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end shrink-0">
+          {onRetrySync && (
+            <button
+              id="btn-sync-dashboard"
+              onClick={onRetrySync}
+              disabled={isSyncing}
+              className={`flex items-center space-x-2 px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 shadow-sm ${
+                isSyncing 
+                  ? 'bg-slate-100 dark:bg-navy-900 text-slate-400 dark:text-navy-600 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 cursor-pointer'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Menghubungkan...' : 'Sinkronkan Database'}</span>
+            </button>
+          )}
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest text-right">
+            PC GP ANSOR BOGOR &copy; 2026
+          </div>
         </div>
       </div>
 

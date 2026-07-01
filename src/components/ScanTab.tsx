@@ -191,7 +191,14 @@ export default function ScanTab({
     const startCameraStream = async () => {
       try {
         setCameraError(null);
-        const constraints: MediaStreamConstraints = {
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Kamera tidak didukung atau dibatasi oleh izin browser/iframe ini.");
+        }
+
+        let stream: MediaStream;
+        
+        const primaryConstraints: MediaStreamConstraints = {
           video: {
             facingMode: facingMode,
             width: { ideal: 640 },
@@ -200,10 +207,39 @@ export default function ScanTab({
           audio: false
         };
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Kamera tidak didukung atau dibatasi oleh izin browser/iframe ini.");
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(primaryConstraints);
+        } catch (firstErr) {
+          console.warn("Camera request with custom 1:1 constraints failed, trying standard 16:9/4:3 fallback:", firstErr);
+          try {
+            const fallbackConstraints1: MediaStreamConstraints = {
+              video: {
+                facingMode: facingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
+              audio: false
+            };
+            stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints1);
+          } catch (secondErr) {
+            console.warn("Camera request with standard widescreen failed, trying facingMode only:", secondErr);
+            try {
+              const fallbackConstraints2: MediaStreamConstraints = {
+                video: { facingMode: facingMode },
+                audio: false
+              };
+              stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints2);
+            } catch (thirdErr) {
+              console.warn("Camera request with facingMode failed, trying generic video constraint:", thirdErr);
+              const fallbackConstraints3: MediaStreamConstraints = {
+                video: true,
+                audio: false
+              };
+              stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints3);
+            }
+          }
         }
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
         if (!isMounted) {
           stream.getTracks().forEach(track => track.stop());
           return;
@@ -285,14 +321,6 @@ export default function ScanTab({
 
   return (
     <div className="space-y-6">
-      
-      {/* iOS Warning Banner */}
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-500 rounded-xl p-4 flex items-start space-x-3 text-xs leading-relaxed shadow-xs">
-        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-        <span>
-          <strong>Info iOS / iPhone:</strong> Jika pemindai kamera tidak terbuka otomatis di browser Safari, silakan gunakan tombol <strong>"Pilih File / Galeri"</strong> untuk memproses pindaian via galeri foto.
-        </span>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         

@@ -152,15 +152,65 @@ CREATE TABLE IF NOT EXISTS rekap_kelulusan (
 ALTER TABLE rekap_kelulusan DISABLE ROW LEVEL SECURITY;
 `;
 
+// Robust upsert helper that can dynamically strip non-existent columns (perfect for old database schemas)
+async function robustUpsert(client: any, tableName: string, rows: any[]): Promise<boolean> {
+  if (rows.length === 0) return true;
+
+  try {
+    let currentRows = rows.map(r => ({ ...r }));
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const { error } = await client.from(tableName).upsert(currentRows);
+      
+      if (!error) {
+        return true;
+      }
+
+      console.warn(`Upsert to ${tableName} failed on attempt ${attempts + 1}:`, error);
+
+      // Code 42703 is undefined_column in Postgres
+      if (error.code === '42703' && error.message) {
+        const match = error.message.match(/column "([^"]+)"/);
+        if (match && match[1]) {
+          const missingColumn = match[1];
+          console.warn(`Detected missing column "${missingColumn}" in table "${tableName}". Retrying without this column...`);
+          
+          currentRows = currentRows.map(row => {
+            const newRow = { ...row };
+            delete newRow[missingColumn];
+            return newRow;
+          });
+
+          attempts++;
+          continue;
+        }
+      }
+
+      // If it is another error or we can't extract column, stop and return false
+      return false;
+    }
+    return false;
+  } catch (e) {
+    console.error(`Exception during robustUpsert to ${tableName}:`, e);
+    return false;
+  }
+}
+
 // Supabase fetching utilities with fallback behavior
 export async function syncPeserta(data: Peserta[]): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
-    let allOk = true;
-    for (const p of data) {
-      const { error } = await client.from('peserta').upsert({
+    if (data.length === 0) return true;
+
+    // Fetch existing peserta list from Supabase for differential synchronization
+    const { data: existing, error: fetchError } = await client.from('peserta').select('*');
+    if (fetchError) {
+      console.warn("Error fetching existing peserta, falling back to full robust upsert:", fetchError);
+      const rows = data.map(p => ({
         id: p.id,
         nama: p.nama,
         utusan: p.utusan,
@@ -172,12 +222,97 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
         status_kelulusan: p.status_kelulusan,
         no_sertifikat: p.no_sertifikat,
         izin_menit: p.izin_menit
-      });
-      if (error) {
-        console.error("Error upserting peserta:", error);
-        allOk = false;
+      }));
+      return await robustUpsert(client, 'peserta', rows);
+    }
+
+    const existingList = existing || [];
+    const existingMap = new Map<string, any>();
+    existingList.forEach(item => {
+      existingMap.set(item.id, item);
+    });
+
+    const localKeys = new Set<string>();
+    const toUpsert: any[] = [];
+
+    // Identify which rows actually need to be written (new or changed)
+    data.forEach(p => {
+      localKeys.add(p.id);
+      const match = existingMap.get(p.id);
+      if (match) {
+        const hasChanged =
+          match.nama !== p.nama ||
+          match.utusan !== p.utusan ||
+          match.hp !== p.hp ||
+          match.foto !== p.foto ||
+          match.nilai_post_test !== p.nilai_post_test ||
+          match.nilai_praktik !== p.nilai_praktik ||
+          match.nilai_keaktifan !== p.nilai_keaktifan ||
+          match.status_kelulusan !== p.status_kelulusan ||
+          match.no_sertifikat !== p.no_sertifikat ||
+          (match.izin_menit !== undefined && match.izin_menit !== p.izin_menit);
+
+        if (hasChanged) {
+          toUpsert.push({
+            id: p.id,
+            nama: p.nama,
+            utusan: p.utusan,
+            hp: p.hp,
+            foto: p.foto,
+            nilai_post_test: p.nilai_post_test,
+            nilai_praktik: p.nilai_praktik,
+            nilai_keaktifan: p.nilai_keaktifan,
+            status_kelulusan: p.status_kelulusan,
+            no_sertifikat: p.no_sertifikat,
+            izin_menit: p.izin_menit
+          });
+        }
+      } else {
+        toUpsert.push({
+          id: p.id,
+          nama: p.nama,
+          utusan: p.utusan,
+          hp: p.hp,
+          foto: p.foto,
+          nilai_post_test: p.nilai_post_test,
+          nilai_praktik: p.nilai_praktik,
+          nilai_keaktifan: p.nilai_keaktifan,
+          status_kelulusan: p.status_kelulusan,
+          no_sertifikat: p.no_sertifikat,
+          izin_menit: p.izin_menit
+        });
+      }
+    });
+
+    // Identify deletes
+    const toDeleteIds: string[] = [];
+    existingList.forEach(item => {
+      if (!localKeys.has(item.id)) {
+        toDeleteIds.push(item.id);
+      }
+    });
+
+    let allOk = true;
+
+    // Delete in chunks of 100 for safety and speed
+    if (toDeleteIds.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
+        const chunk = toDeleteIds.slice(i, i + chunkSize);
+        const { error } = await client.from('peserta').delete().in('id', chunk);
+        if (error) {
+          console.error("Error batch deleting peserta:", error);
+          allOk = false;
+        }
       }
     }
+
+    // Upsert the new/changed rows using robustUpsert
+    if (toUpsert.length > 0) {
+      const success = await robustUpsert(client, 'peserta', toUpsert);
+      if (!success) allOk = false;
+    }
+
     return allOk;
   } catch (e) {
     console.error("Supabase peserta sync error:", e);
@@ -201,9 +336,13 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
   if (!client) return false;
 
   try {
-    let allOk = true;
-    for (const s of data) {
-      const { error } = await client.from('sesi').upsert({
+    if (data.length === 0) return true;
+
+    // Fetch existing sesi list
+    const { data: existing, error: fetchError } = await client.from('sesi').select('*');
+    if (fetchError) {
+      console.warn("Error fetching existing sesi, falling back to full robust upsert:", fetchError);
+      const rows = data.map(s => ({
         num: s.num,
         materi: s.materi,
         instruktur: s.instruktur,
@@ -212,12 +351,81 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
         maxLate: s.maxLate,
         toiletLimit: s.toiletLimit,
         active: s.active
-      });
+      }));
+      return await robustUpsert(client, 'sesi', rows);
+    }
+
+    const existingList = existing || [];
+    const existingMap = new Map<number, any>();
+    existingList.forEach(item => {
+      existingMap.set(item.num, item);
+    });
+
+    const localKeys = new Set<number>();
+    const toUpsert: any[] = [];
+
+    data.forEach(s => {
+      localKeys.add(s.num);
+      const match = existingMap.get(s.num);
+      if (match) {
+        const hasChanged =
+          match.materi !== s.materi ||
+          match.instruktur !== s.instruktur ||
+          match.startTime !== s.startTime ||
+          match.duration !== s.duration ||
+          match.maxLate !== s.maxLate ||
+          match.toiletLimit !== s.toiletLimit ||
+          match.active !== s.active;
+
+        if (hasChanged) {
+          toUpsert.push({
+            num: s.num,
+            materi: s.materi,
+            instruktur: s.instruktur,
+            startTime: s.startTime,
+            duration: s.duration,
+            maxLate: s.maxLate,
+            toiletLimit: s.toiletLimit,
+            active: s.active
+          });
+        }
+      } else {
+        toUpsert.push({
+          num: s.num,
+          materi: s.materi,
+          instruktur: s.instruktur,
+          startTime: s.startTime,
+          duration: s.duration,
+          maxLate: s.maxLate,
+          toiletLimit: s.toiletLimit,
+          active: s.active
+        });
+      }
+    });
+
+    // Identify deletes
+    const toDeleteIds: number[] = [];
+    existingList.forEach(item => {
+      if (!localKeys.has(item.num)) {
+        toDeleteIds.push(item.num);
+      }
+    });
+
+    let allOk = true;
+
+    if (toDeleteIds.length > 0) {
+      const { error } = await client.from('sesi').delete().in('num', toDeleteIds);
       if (error) {
-        console.error("Error upserting sesi:", error);
+        console.error("Error deleting sesi:", error);
         allOk = false;
       }
     }
+
+    if (toUpsert.length > 0) {
+      const success = await robustUpsert(client, 'sesi', toUpsert);
+      if (!success) allOk = false;
+    }
+
     return allOk;
   } catch (e) {
     console.error("Supabase sesi sync error:", e);
@@ -241,33 +449,128 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
   if (!client) return false;
 
   try {
-    // Delete old presensi logs and insert new ones to maintain perfect state
-    // Or do dynamic reconciliation
-    const { error: delError } = await client.from('presensi').delete().neq('id', 'CONCRETE_PLACEHOLDER_IMPROVEMENT');
-    if (delError) {
-      console.error("Error clearing presensi table:", delError);
-      return false;
+    // 1. Fetch existing presensi from Supabase for differential synchronization
+    const { data: existing, error: fetchError } = await client.from('presensi').select('*');
+    if (fetchError) {
+      console.warn("Error fetching existing presensi, falling back to full wipe & re-write:", fetchError);
+      const { error: delError } = await client.from('presensi').delete().neq('id', 'CONCRETE_PLACEHOLDER_IMPROVEMENT');
+      if (delError) return false;
+
+      if (data.length > 0) {
+        const dbRows = data.map(p => ({
+          id: p.id,
+          nama: p.nama,
+          utusan: p.utusan,
+          materi: p.materi,
+          waktu: p.waktu,
+          status: p.status,
+          sesi: p.sesi
+        }));
+        const { error } = await client.from('presensi').insert(dbRows);
+        return !error;
+      }
+      return true;
     }
 
-    if (data.length > 0) {
-      const dbRows = data.map(p => ({
-        id: p.id,
-        nama: p.nama,
-        utusan: p.utusan,
-        materi: p.materi,
-        waktu: p.waktu,
-        status: p.status,
-        sesi: p.sesi
-      }));
-      const { error } = await client.from('presensi').insert(dbRows);
-      if (error) {
-        console.error("Error bulk inserting presensi:", error);
-        return false;
+    const existingList = existing || [];
+    const existingMap = new Map<string, any>();
+    existingList.forEach(item => {
+      existingMap.set(`${item.id}_${item.sesi}`, item);
+    });
+
+    const localKeys = new Set<string>();
+    const toInsert: any[] = [];
+    const toUpdate: any[] = [];
+
+    // 2. Identify inserts and updates
+    data.forEach(p => {
+      const key = `${p.id}_${p.sesi}`;
+      localKeys.add(key);
+
+      const match = existingMap.get(key);
+      if (match) {
+        const hasChanged = 
+          match.nama !== p.nama ||
+          match.utusan !== p.utusan ||
+          match.materi !== p.materi ||
+          match.waktu !== p.waktu ||
+          match.status !== p.status;
+
+        if (hasChanged) {
+          toUpdate.push({
+            db_id: match.db_id,
+            id: p.id,
+            nama: p.nama,
+            utusan: p.utusan,
+            materi: p.materi,
+            waktu: p.waktu,
+            status: p.status,
+            sesi: p.sesi
+          });
+        }
+      } else {
+        toInsert.push({
+          id: p.id,
+          nama: p.nama,
+          utusan: p.utusan,
+          materi: p.materi,
+          waktu: p.waktu,
+          status: p.status,
+          sesi: p.sesi
+        });
+      }
+    });
+
+    // 3. Identify deletes
+    const toDeleteIds: number[] = [];
+    existingList.forEach(item => {
+      const key = `${item.id}_${item.sesi}`;
+      if (!localKeys.has(key)) {
+        toDeleteIds.push(item.db_id);
+      }
+    });
+
+    let allOk = true;
+
+    // Delete in chunks of 100 for maximum performance and stability
+    if (toDeleteIds.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
+        const chunk = toDeleteIds.slice(i, i + chunkSize);
+        const { error } = await client.from('presensi').delete().in('db_id', chunk);
+        if (error) {
+          console.error("Error batch deleting presensi:", error);
+          allOk = false;
+        }
       }
     }
-    return true;
+
+    // Insert in chunks of 100
+    if (toInsert.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        const chunk = toInsert.slice(i, i + chunkSize);
+        const { error } = await client.from('presensi').insert(chunk);
+        if (error) {
+          console.error("Error batch inserting presensi:", error);
+          allOk = false;
+        }
+      }
+    }
+
+    // Update in chunks of 100 using robustUpsert
+    if (toUpdate.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < toUpdate.length; i += chunkSize) {
+        const chunk = toUpdate.slice(i, i + chunkSize);
+        const success = await robustUpsert(client, 'presensi', chunk);
+        if (!success) allOk = false;
+      }
+    }
+
+    return allOk;
   } catch (e) {
-    console.error("Supabase presensi sync error:", e);
+    console.error("Supabase presensi differential sync error:", e);
     return false;
   }
 }
@@ -277,21 +580,17 @@ export async function syncTim(data: Tim[]): Promise<boolean> {
   if (!client) return false;
 
   try {
-    let allOk = true;
-    for (const t of data) {
-      const { error } = await client.from('tim').upsert({
-        username: t.username,
-        nama: t.nama,
-        role: t.role,
-        password: t.password || '',
-        permissions: t.permissions
-      });
-      if (error) {
-        console.error("Error upserting tim:", error);
-        allOk = false;
-      }
-    }
-    return allOk;
+    if (data.length === 0) return true;
+
+    const rows = data.map(t => ({
+      username: t.username,
+      nama: t.nama,
+      role: t.role,
+      password: t.password || '',
+      permissions: t.permissions
+    }));
+
+    return await robustUpsert(client, 'tim', rows);
   } catch (e) {
     console.error("Supabase tim sync error:", e);
     return false;
@@ -451,42 +750,65 @@ export async function fetchAllFromSupabase(): Promise<any> {
       client.from('branding').select('*').eq('id', 1).maybeSingle()
     ]);
 
-    // Check if any query returned an error (such as invalid API keys or missing table/relation)
-    const errors = [resPeserta.error, resSesi.error, resPresensi.error, resTim.error, resBranding.error].filter(Boolean);
-    if (errors.length > 0) {
-      console.warn("Supabase queries returned errors:", errors);
-
-      const hasAuthError = errors.some((err: any) => 
+    // Check for auth errors first
+    const allErrors = [resPeserta.error, resSesi.error, resPresensi.error, resTim.error, resBranding.error];
+    const authError = allErrors.find((err: any) => 
+      err && (
         err.message?.toLowerCase().includes('apikey') || 
         err.message?.toLowerCase().includes('invalid') ||
         err.message?.toLowerCase().includes('jwt') ||
         err.status === 401 ||
         err.status === 403 ||
         err.code === 'PGRST111'
-      );
-      
-      const hasMissingTableError = errors.some((err: any) => 
-        err.code === '42P01' || 
-        (err.message?.toLowerCase().includes('relation') && err.message?.toLowerCase().includes('does not exist'))
-      );
+      )
+    );
 
-      if (hasAuthError) {
-        return { errorType: 'auth', errors };
-      }
-      
-      return { errorType: 'schema', errors };
+    if (authError) {
+      return { errorType: 'auth', errors: [authError] };
     }
 
-    const peserta = resPeserta.data;
-    const sesi = resSesi.data;
-    const presensi = resPresensi.data;
-    const tim = resTim.data;
-    const branding = resBranding.data;
+    // Check if CORE tables (peserta, sesi, presensi) are missing
+    const coreErrors = [resPeserta.error, resSesi.error, resPresensi.error].filter(Boolean);
+    const hasCoreMissingTable = coreErrors.some((err: any) => 
+      err.code === '42P01' || 
+      (err.message?.toLowerCase().includes('relation') && err.message?.toLowerCase().includes('does not exist'))
+    );
+
+    if (hasCoreMissingTable) {
+      return { errorType: 'schema', errors: coreErrors };
+    }
+
+    // If there is any other core error
+    if (coreErrors.length > 0) {
+      return { errorType: 'connection', errors: coreErrors };
+    }
+
+    // Now we know core tables are fully available and connected!
+    // What if auxiliary tables (tim, branding) are missing or errored? That's fine! We'll just fallback to local data.
+    const peserta = resPeserta.data || [];
+    const sesi = resSesi.data || [];
+    const presensi = resPresensi.data || [];
+    
+    // Fallback for tim if missing or errored
+    let tim = [];
+    if (!resTim.error) {
+      tim = resTim.data || [];
+    } else {
+      console.warn("Table 'tim' missing or errored in database, using local fallback:", resTim.error);
+    }
+
+    // Fallback for branding if missing or errored
+    let branding = null;
+    if (!resBranding.error) {
+      branding = resBranding.data;
+    } else {
+      console.warn("Table 'branding' missing or errored in database, using local fallback:", resBranding.error);
+    }
 
     return {
-      peserta: peserta || [],
-      sesi: sesi || [],
-      presensi: (presensi || []).map(p => ({
+      peserta,
+      sesi,
+      presensi: presensi.map(p => ({
         id: p.id,
         nama: p.nama,
         utusan: p.utusan,
@@ -495,7 +817,7 @@ export async function fetchAllFromSupabase(): Promise<any> {
         status: p.status as "Tepat Waktu" | "Terlambat",
         sesi: p.sesi
       })),
-      tim: (tim || []).map(t => ({
+      tim: tim.map(t => ({
         username: t.username,
         nama: t.nama,
         role: t.role as "Admin" | "Operator",
@@ -510,7 +832,8 @@ export async function fetchAllFromSupabase(): Promise<any> {
         logo: branding.logo,
         themeColor: (branding.themeColor || branding.themecolor || 'emerald') as "emerald" | "navy" | "indigo" | "rose" | "amber",
         delegationType: branding.delegationType || branding.delegationtype || 'PAC'
-      } : null
+      } : null,
+      auxiliaryMissing: !!(resTim.error || resBranding.error)
     };
   } catch (e) {
     console.error("Failed to fetch all data from Supabase:", e);
@@ -545,26 +868,38 @@ export async function syncRekapKelulusan(data: {
   if (!client) return false;
 
   try {
-    let allOk = true;
-    for (const r of data) {
-      const { error } = await client.from('rekap_kelulusan').upsert({
-        id: r.id,
-        nama: r.nama,
-        utusan: r.utusan,
-        total_hadir_menit: r.total_hadir_menit,
-        persentase_kehadiran: r.persentase_kehadiran,
-        izin_menit: r.izin_menit,
-        evaluasi_sistem: r.evaluasi_sistem,
-        no_sertifikat: r.no_sertifikat,
-        status_kelulusan: r.status_kelulusan,
-        updated_at: new Date().toISOString()
-      });
-      if (error) {
-        console.error("Error upserting rekap_kelulusan:", error);
-        allOk = false;
+    if (data.length === 0) return true;
+
+    // Check if the rekap_kelulusan table exists
+    let hasTable = true;
+    try {
+      const { error: checkError } = await client.from('rekap_kelulusan').select('id').limit(1);
+      if (checkError && (checkError.code === '42P01' || checkError.message?.toLowerCase().includes('relation'))) {
+        hasTable = false;
       }
+    } catch (e) {
+      hasTable = false;
     }
-    return allOk;
+
+    if (!hasTable) {
+      console.warn("Table 'rekap_kelulusan' does not exist in this database. Skipping rekap_kelulusan sync gracefully.");
+      return true;
+    }
+
+    const rows = data.map(r => ({
+      id: r.id,
+      nama: r.nama,
+      utusan: r.utusan,
+      total_hadir_menit: r.total_hadir_menit,
+      persentase_kehadiran: r.persentase_kehadiran,
+      izin_menit: r.izin_menit,
+      evaluasi_sistem: r.evaluasi_sistem,
+      no_sertifikat: r.no_sertifikat,
+      status_kelulusan: r.status_kelulusan,
+      updated_at: new Date().toISOString()
+    }));
+
+    return await robustUpsert(client, 'rekap_kelulusan', rows);
   } catch (e) {
     console.error("Supabase rekap_kelulusan sync error:", e);
     return false;
