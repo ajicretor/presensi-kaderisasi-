@@ -68,19 +68,22 @@ CREATE TABLE IF NOT EXISTS peserta (
   status_kelulusan TEXT DEFAULT 'TIDAK LULUS',
   no_sertifikat TEXT DEFAULT '',
   izin_menit INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  kab_kota TEXT DEFAULT ''
 );
 
 -- 2. Tabel Sesi
 CREATE TABLE IF NOT EXISTS sesi (
-  num INTEGER PRIMARY KEY,
+  num INTEGER NOT NULL,
   materi TEXT NOT NULL,
   instruktur TEXT NOT NULL,
   "startTime" TEXT NOT NULL,
   duration INTEGER DEFAULT 90,
   "maxLate" INTEGER DEFAULT 10,
   "toiletLimit" INTEGER DEFAULT 5,
-  active BOOLEAN DEFAULT false
+  active BOOLEAN DEFAULT false,
+  kab_kota TEXT DEFAULT '',
+  PRIMARY KEY (num, kab_kota)
 );
 
 -- 3. Tabel Presensi
@@ -93,7 +96,8 @@ CREATE TABLE IF NOT EXISTS presensi (
   waktu TEXT NOT NULL,
   status TEXT NOT NULL,
   sesi INTEGER NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  kab_kota TEXT DEFAULT ''
 );
 
 -- 4. Tabel Tim (Manajemen Operator)
@@ -102,39 +106,24 @@ CREATE TABLE IF NOT EXISTS tim (
   nama TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'Operator',
   password TEXT NOT NULL,
-  permissions TEXT[] NOT NULL
+  permissions TEXT[] NOT NULL,
+  kab_kota TEXT DEFAULT '',
+  is_superadmin BOOLEAN DEFAULT false
 );
 
 -- 5. Tabel Branding (Konfigurasi Global)
 CREATE TABLE IF NOT EXISTS branding (
-  id INTEGER PRIMARY KEY DEFAULT 1,
+  id INTEGER DEFAULT 1,
   "appName" TEXT NOT NULL,
   organisasi TEXT NOT NULL,
   cabang TEXT NOT NULL,
   "totalSesi" INTEGER DEFAULT 14,
   logo TEXT NOT NULL,
   "themeColor" TEXT NOT NULL DEFAULT 'emerald',
-  "delegationType" TEXT DEFAULT 'PAC'
+  "delegationType" TEXT DEFAULT 'PAC',
+  kab_kota TEXT DEFAULT '',
+  PRIMARY KEY (id, kab_kota)
 );
-
--- Seed defaults for testing
-INSERT INTO tim (username, nama, role, password, permissions)
-VALUES 
-  ('admin', 'Administrator Wilayah', 'Admin', 'admin', ARRAY['dash', 'peserta', 'kelulusan', 'scan', 'sesi', 'rekap']),
-  ('operator1', 'Operator Lapangan 01', 'Operator', 'operator1', ARRAY['dash', 'scan', 'rekap']),
-  ('operator2', 'Operator Kelas 02', 'Operator', 'operator2', ARRAY['dash', 'sesi'])
-ON CONFLICT (username) DO NOTHING;
-
-INSERT INTO branding (id, "appName", organisasi, cabang, "totalSesi", logo, "themeColor")
-VALUES (1, 'SI-ANSOR PRO v7.0', 'PC GP ANSOR KABUPATEN BOGOR', 'KABUPATEN BOGOR', 14, '<svg class="w-11 h-11" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="blueTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0284c7" /><stop offset="50%" stop-color="#0ea5e9" /><stop offset="100%" stop-color="#0d9488" /></linearGradient><linearGradient id="emeraldTeal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" /><stop offset="100%" stop-color="#059669" /></linearGradient><linearGradient id="skyGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#1e3a8a" /><stop offset="100%" stop-color="#0284c7" /></linearGradient></defs><path d="M 20 60 A 40 40 0 0 1 100 60" stroke="url(#skyGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 10" /><path d="M 12 60 C 12 30, 30 12, 60 12 C 90 12, 108 30, 108 60 C 108 80, 95 100, 75 108" stroke="url(#blueTeal)" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 22 75 C 16 65, 18 45, 30 30" stroke="url(#emeraldTeal)" stroke-width="5" stroke-linecap="round" fill="none" /><g stroke="#0d9488" stroke-width="2" opacity="0.6"><line x1="60" y1="20" x2="60" y2="24" /><line x1="60" y1="100" x2="60" y2="96" /><line x1="20" y1="60" x2="24" y2="60" /><line x1="100" y1="60" x2="96" y2="60" /><line x1="32" y1="32" x2="35" y2="35" /><line x1="88" y1="32" x2="85" y2="35" /><line x1="32" y1="88" x2="35" y2="85" /><line x1="88" y1="88" x2="85" y2="85" /></g><path d="M 60 28 C 58 18, 65 10, 75 8 C 70 16, 68 22, 60 28 Z" fill="url(#emeraldTeal)" /><path d="M 58 26 C 54 22, 55 16, 60 12 C 58 18, 58 22, 58 26 Z" fill="url(#blueTeal)" /><circle cx="60" cy="46" r="5" fill="#10b981" /><path d="M 60 51 C 54 53, 50 63, 60 78 C 70 63, 66 53, 60 51 Z" fill="url(#emeraldTeal)" /><path d="M 46 51 C 52 49, 56 50, 60 51 C 64 50, 68 49, 74 51 C 66 58, 54 58, 46 51 Z" fill="url(#blueTeal)" /><circle cx="48" cy="55" r="4.5" fill="#0284c7" /><path d="M 48 59.5 C 42 61, 38 72, 48 83 C 54 72, 52 61, 48 59.5 Z" fill="url(#blueTeal)" /><circle cx="72" cy="55" r="4.5" fill="#0284c7" /><path d="M 72 59.5 C 78 61, 82 72, 72 83 C 66 72, 68 61, 72 59.5 Z" fill="url(#blueTeal)" /><path d="M 35 88 C 45 98, 55 98, 60 98 C 65 98, 75 98, 85 88" stroke="url(#blueTeal)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 42 93 C 50 101, 56 101, 60 101 C 64 101, 70 101, 78 93" stroke="url(#blueTeal)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 48 98 C 53 104, 57 104, 60 104 C 63 104, 67 104, 72 98" stroke="url(#blueTeal)" stroke-width="2" stroke-linecap="round" fill="none" /></svg>', 'emerald')
-ON CONFLICT (id) DO NOTHING;
-
--- 6. Nonaktifkan Row Level Security (RLS) pada semua tabel agar sinkronisasi real-time anon-key dapat berjalan sukses
-ALTER TABLE peserta DISABLE ROW LEVEL SECURITY;
-ALTER TABLE sesi DISABLE ROW LEVEL SECURITY;
-ALTER TABLE presensi DISABLE ROW LEVEL SECURITY;
-ALTER TABLE tim DISABLE ROW LEVEL SECURITY;
-ALTER TABLE branding DISABLE ROW LEVEL SECURITY;
 
 -- 7. Tabel Rekap Kelulusan
 CREATE TABLE IF NOT EXISTS rekap_kelulusan (
@@ -147,8 +136,69 @@ CREATE TABLE IF NOT EXISTS rekap_kelulusan (
   evaluasi_sistem TEXT,
   no_sertifikat TEXT DEFAULT '',
   status_kelulusan TEXT DEFAULT 'TIDAK LULUS',
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  kab_kota TEXT DEFAULT ''
 );
+
+-- UPGRADE / SKEMA MIGRASI KAB/KOTA (MULTI-TENANCY):
+-- Query ini aman dijalankan jika tabel-tabel di atas sudah pernah dibuat sebelumnya.
+-- Menambahkan kolom kab_kota ke tabel jika belum ada
+ALTER TABLE peserta ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+ALTER TABLE sesi ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+ALTER TABLE presensi ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+ALTER TABLE tim ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+ALTER TABLE tim ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false;
+ALTER TABLE branding ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+ALTER TABLE rekap_kelulusan ADD COLUMN IF NOT EXISTS kab_kota TEXT DEFAULT '';
+
+-- Mengubah Primary Key sesi menjadi Composite (num, kab_kota) jika belum composite
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_name='sesi' AND constraint_type='PRIMARY KEY'
+    ) THEN
+        IF (SELECT count(*) FROM information_schema.key_column_usage WHERE table_name='sesi') = 1 THEN
+            ALTER TABLE sesi DROP CONSTRAINT IF EXISTS sesi_pkey CASCADE;
+            ALTER TABLE sesi ADD PRIMARY KEY (num, kab_kota);
+        END IF;
+    END IF;
+END $$;
+
+-- Mengubah Primary Key branding menjadi Composite (id, kab_kota) jika belum composite
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_name='branding' AND constraint_type='PRIMARY KEY'
+    ) THEN
+        IF (SELECT count(*) FROM information_schema.key_column_usage WHERE table_name='branding') = 1 THEN
+            ALTER TABLE branding DROP CONSTRAINT IF EXISTS branding_pkey CASCADE;
+            ALTER TABLE branding ADD PRIMARY KEY (id, kab_kota);
+        END IF;
+    END IF;
+END $$;
+
+-- Seed defaults untuk testing multi-tenancy
+INSERT INTO tim (username, nama, role, password, permissions, kab_kota, is_superadmin)
+VALUES 
+  ('admin', 'Super Admin Pusat', 'Admin', 'admin', ARRAY['dash', 'peserta', 'kelulusan', 'scan', 'sesi', 'rekap'], 'Pusat', true),
+  ('bogor_admin', 'Admin Kabupaten Bogor', 'Admin', 'bogor123', ARRAY['dash', 'peserta', 'kelulusan', 'scan', 'sesi', 'rekap'], 'KABUPATEN BOGOR', false),
+  ('bekasi_admin', 'Admin Kabupaten Bekasi', 'Admin', 'bekasi123', ARRAY['dash', 'peserta', 'kelulusan', 'scan', 'sesi', 'rekap'], 'KABUPATEN BEKASI', false),
+  ('operator1', 'Operator Lapangan Bogor', 'Operator', 'operator1', ARRAY['dash', 'scan', 'rekap'], 'KABUPATEN BOGOR', false)
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO branding (id, "appName", organisasi, cabang, "totalSesi", logo, "themeColor", kab_kota)
+VALUES 
+  (1, 'SI-ANSOR PRO v7.0', 'PIMPINAN CABANG GP ANSOR', 'Pusat', 14, '<svg class="w-11 h-11" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="blueTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0284c7" /><stop offset="50%" stop-color="#0ea5e9" /><stop offset="100%" stop-color="#0d9488" /></linearGradient><linearGradient id="emeraldTeal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" /><stop offset="100%" stop-color="#059669" /></linearGradient><linearGradient id="skyGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#1e3a8a" /><stop offset="100%" stop-color="#0284c7" /></linearGradient></defs><path d="M 20 60 A 40 40 0 0 1 100 60" stroke="url(#skyGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 10" /><path d="M 12 60 C 12 30, 30 12, 60 12 C 90 12, 108 30, 108 60 C 108 80, 95 100, 75 108" stroke="url(#blueTeal)" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 22 75 C 16 65, 18 45, 30 30" stroke="url(#emeraldTeal)" stroke-width="5" stroke-linecap="round" fill="none" /><g stroke="#0d9488" stroke-width="2" opacity="0.6"><line x1="60" y1="20" x2="60" y2="24" /><line x1="60" y1="100" x2="60" y2="96" /><line x1="20" y1="60" x2="24" y2="60" /><line x1="100" y1="60" x2="96" y2="60" /><line x1="32" y1="32" x2="35" y2="35" /><line x1="88" y1="32" x2="85" y2="35" /><line x1="32" y1="88" x2="35" y2="85" /><line x1="88" y1="88" x2="85" y2="85" /></g><path d="M 60 28 C 58 18, 65 10, 75 8 C 70 16, 68 22, 60 28 Z" fill="url(#emeraldTeal)" /><path d="M 58 26 C 54 22, 55 16, 60 12 C 58 18, 58 22, 58 26 Z" fill="url(#blueTeal)" /><circle cx="60" cy="46" r="5" fill="#10b981" /><path d="M 60 51 C 54 53, 50 63, 60 78 C 70 63, 66 53, 60 51 Z" fill="url(#emeraldTeal)" /><path d="M 46 51 C 52 49, 56 50, 60 51 C 64 50, 68 49, 74 51 C 66 58, 54 58, 46 51 Z" fill="url(#blueTeal)" /><circle cx="48" cy="55" r="4.5" fill="#0284c7" /><path d="M 48 59.5 C 42 61, 38 72, 48 83 C 54 72, 52 61, 48 59.5 Z" fill="url(#blueTeal)" /><circle cx="72" cy="55" r="4.5" fill="#0284c7" /><path d="M 72 59.5 C 78 61, 82 72, 72 83 C 66 72, 68 61, 72 59.5 Z" fill="url(#blueTeal)" /><path d="M 35 88 C 45 98, 55 98, 60 98 C 65 98, 75 98, 85 88" stroke="url(#blueTeal)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 42 93 C 50 101, 56 101, 60 101 C 64 101, 70 101, 78 93" stroke="url(#blueTeal)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 48 98 C 53 104, 57 104, 60 104 C 63 104, 67 104, 72 98" stroke="url(#blueTeal)" stroke-width="2" stroke-linecap="round" fill="none" /></svg>', 'emerald', 'Pusat')
+ON CONFLICT (id, kab_kota) DO NOTHING;
+
+-- Nonaktifkan Row Level Security (RLS) pada semua tabel
+ALTER TABLE peserta DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sesi DISABLE ROW LEVEL SECURITY;
+ALTER TABLE presensi DISABLE ROW LEVEL SECURITY;
+ALTER TABLE tim DISABLE ROW LEVEL SECURITY;
+ALTER TABLE branding DISABLE ROW LEVEL SECURITY;
 ALTER TABLE rekap_kelulusan DISABLE ROW LEVEL SECURITY;
 `;
 
@@ -167,7 +217,6 @@ async function queryWithRetry(queryFn: () => PromiseLike<any> | any, retries = 3
 
       console.warn(`Query attempt ${attempt + 1} failed:`, lastResult.error);
 
-      // If it is a known schema missing table error (42P01) or Auth error (invalid apikey, etc.), do not retry
       if (
         errCode === '42P01' || 
         (errMsg.includes('relation') && errMsg.includes('does not exist')) ||
@@ -185,7 +234,6 @@ async function queryWithRetry(queryFn: () => PromiseLike<any> | any, retries = 3
       console.warn(`Query attempt ${attempt + 1} threw exception:`, e);
     }
     
-    // Wait before next attempt
     if (attempt < retries - 1) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
@@ -211,7 +259,6 @@ async function robustUpsert(client: any, tableName: string, rows: any[]): Promis
 
       console.warn(`Upsert to ${tableName} failed on attempt ${attempts + 1}:`, error);
 
-      // Code 42703 is undefined_column in Postgres
       if (error.code === '42703' && error.message) {
         const match = error.message.match(/column "([^"]+)"/);
         if (match && match[1]) {
@@ -229,7 +276,6 @@ async function robustUpsert(client: any, tableName: string, rows: any[]): Promis
         }
       }
 
-      // If it is another error or we can't extract column, stop and return false
       return false;
     }
     return false;
@@ -239,16 +285,44 @@ async function robustUpsert(client: any, tableName: string, rows: any[]): Promis
   }
 }
 
+// Helper to perform safe select query filtering by tenant if the column exists
+async function safeSelect(client: SupabaseClient, table: string, currentKabKota?: string, isSuperAdmin?: boolean, orderField?: string) {
+  const getQuery = (filter: boolean) => {
+    let q = client.from(table).select('*');
+    if (filter && currentKabKota) {
+      if (table === 'tim') {
+        q = q.or(`kab_kota.eq."${currentKabKota}",kab_kota.is.null,kab_kota.eq.""`);
+      } else {
+        q = q.eq('kab_kota', currentKabKota);
+      }
+    }
+    if (orderField) {
+      q = q.order(orderField, { ascending: true });
+    }
+    return q;
+  };
+
+  if (!isSuperAdmin && currentKabKota) {
+    const withFilter = await queryWithRetry(() => getQuery(true));
+    if (!withFilter.error) return withFilter;
+    if (withFilter.error.code === '42703') {
+      console.warn(`Column kab_kota does not exist in table ${table}, falling back to unfiltered query.`);
+    } else {
+      return withFilter;
+    }
+  }
+  return await queryWithRetry(() => getQuery(false));
+}
+
 // Supabase fetching utilities with fallback behavior
-export async function syncPeserta(data: Peserta[]): Promise<boolean> {
+export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
     if (data.length === 0) return true;
 
-    // Fetch existing peserta list from Supabase for differential synchronization with retry
-    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('peserta').select('*'));
+    const { data: existing, error: fetchError } = await safeSelect(client, 'peserta', currentKabKota, isSuperAdmin);
     if (fetchError) {
       console.warn("Error fetching existing peserta, falling back to full robust upsert:", fetchError);
       const rows = data.map(p => ({
@@ -262,7 +336,8 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
         nilai_keaktifan: p.nilai_keaktifan,
         status_kelulusan: p.status_kelulusan,
         no_sertifikat: p.no_sertifikat,
-        izin_menit: p.izin_menit
+        izin_menit: p.izin_menit,
+        kab_kota: p.kab_kota || currentKabKota || ''
       }));
       return await robustUpsert(client, 'peserta', rows);
     }
@@ -276,10 +351,10 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
     const localKeys = new Set<string>();
     const toUpsert: any[] = [];
 
-    // Identify which rows actually need to be written (new or changed)
     data.forEach(p => {
       localKeys.add(p.id);
       const match = existingMap.get(p.id);
+      const rowKabKota = p.kab_kota || match?.kab_kota || currentKabKota || '';
       if (match) {
         const hasChanged =
           match.nama !== p.nama ||
@@ -291,6 +366,7 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
           match.nilai_keaktifan !== p.nilai_keaktifan ||
           match.status_kelulusan !== p.status_kelulusan ||
           match.no_sertifikat !== p.no_sertifikat ||
+          match.kab_kota !== rowKabKota ||
           (match.izin_menit !== undefined && match.izin_menit !== p.izin_menit);
 
         if (hasChanged) {
@@ -305,7 +381,8 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
             nilai_keaktifan: p.nilai_keaktifan,
             status_kelulusan: p.status_kelulusan,
             no_sertifikat: p.no_sertifikat,
-            izin_menit: p.izin_menit
+            izin_menit: p.izin_menit,
+            kab_kota: rowKabKota
           });
         }
       } else {
@@ -320,12 +397,12 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
           nilai_keaktifan: p.nilai_keaktifan,
           status_kelulusan: p.status_kelulusan,
           no_sertifikat: p.no_sertifikat,
-          izin_menit: p.izin_menit
+          izin_menit: p.izin_menit,
+          kab_kota: rowKabKota
         });
       }
     });
 
-    // Identify deletes
     const toDeleteIds: string[] = [];
     existingList.forEach(item => {
       if (!localKeys.has(item.id)) {
@@ -335,7 +412,6 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
 
     let allOk = true;
 
-    // Delete in chunks of 100 for safety and speed
     if (toDeleteIds.length > 0) {
       const chunkSize = 100;
       for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
@@ -348,7 +424,6 @@ export async function syncPeserta(data: Peserta[]): Promise<boolean> {
       }
     }
 
-    // Upsert the new/changed rows using robustUpsert
     if (toUpsert.length > 0) {
       const success = await robustUpsert(client, 'peserta', toUpsert);
       if (!success) allOk = false;
@@ -372,17 +447,16 @@ export async function deletePesertaFromSupabase(id: string): Promise<boolean> {
   }
 }
 
-export async function syncSesi(data: Sesi[]): Promise<boolean> {
+export async function syncSesi(data: Sesi[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
     if (data.length === 0) return true;
 
-    // Fetch existing sesi list with retry
-    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('sesi').select('*'));
+    const { data: existing, error: fetchError } = await safeSelect(client, 'sesi', currentKabKota, isSuperAdmin);
     if (fetchError) {
-      console.warn("Error fetching existing sesi, falling back to full robust upsert:", fetchError);
+      console.warn("Error fetching existing sesi, falling back to robust upsert:", fetchError);
       const rows = data.map(s => ({
         num: s.num,
         materi: s.materi,
@@ -391,23 +465,27 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
         duration: s.duration,
         maxLate: s.maxLate,
         toiletLimit: s.toiletLimit,
-        active: s.active
+        active: s.active,
+        kab_kota: s.kab_kota || currentKabKota || ''
       }));
       return await robustUpsert(client, 'sesi', rows);
     }
 
     const existingList = existing || [];
-    const existingMap = new Map<number, any>();
+    const existingMap = new Map<string, any>();
     existingList.forEach(item => {
-      existingMap.set(item.num, item);
+      existingMap.set(`${item.num}_${item.kab_kota || ''}`, item);
     });
 
-    const localKeys = new Set<number>();
+    const localKeys = new Set<string>();
     const toUpsert: any[] = [];
 
     data.forEach(s => {
-      localKeys.add(s.num);
-      const match = existingMap.get(s.num);
+      const rowKabKota = s.kab_kota || currentKabKota || '';
+      const key = `${s.num}_${rowKabKota}`;
+      localKeys.add(key);
+
+      const match = existingMap.get(key);
       if (match) {
         const hasChanged =
           match.materi !== s.materi ||
@@ -416,7 +494,8 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
           match.duration !== s.duration ||
           match.maxLate !== s.maxLate ||
           match.toiletLimit !== s.toiletLimit ||
-          match.active !== s.active;
+          match.active !== s.active ||
+          match.kab_kota !== rowKabKota;
 
         if (hasChanged) {
           toUpsert.push({
@@ -427,7 +506,8 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
             duration: s.duration,
             maxLate: s.maxLate,
             toiletLimit: s.toiletLimit,
-            active: s.active
+            active: s.active,
+            kab_kota: rowKabKota
           });
         }
       } else {
@@ -439,26 +519,29 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
           duration: s.duration,
           maxLate: s.maxLate,
           toiletLimit: s.toiletLimit,
-          active: s.active
+          active: s.active,
+          kab_kota: rowKabKota
         });
       }
     });
 
-    // Identify deletes
-    const toDeleteIds: number[] = [];
+    const toDeleteList: { num: number; kab_kota: string }[] = [];
     existingList.forEach(item => {
-      if (!localKeys.has(item.num)) {
-        toDeleteIds.push(item.num);
+      const key = `${item.num}_${item.kab_kota || ''}`;
+      if (!localKeys.has(key)) {
+        toDeleteList.push({ num: item.num, kab_kota: item.kab_kota || '' });
       }
     });
 
     let allOk = true;
 
-    if (toDeleteIds.length > 0) {
-      const { error } = await client.from('sesi').delete().in('num', toDeleteIds);
-      if (error) {
-        console.error("Error deleting sesi:", error);
-        allOk = false;
+    if (toDeleteList.length > 0) {
+      for (const item of toDeleteList) {
+        const { error } = await client.from('sesi').delete().eq('num', item.num).eq('kab_kota', item.kab_kota);
+        if (error) {
+          console.error("Error deleting sesi:", error);
+          allOk = false;
+        }
       }
     }
 
@@ -474,29 +557,29 @@ export async function syncSesi(data: Sesi[]): Promise<boolean> {
   }
 }
 
-export async function deleteSesiFromSupabase(num: number): Promise<boolean> {
+export async function deleteSesiFromSupabase(num: number, kab_kota?: string): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
   try {
-    const { error } = await client.from('sesi').delete().eq('num', num);
+    let q = client.from('sesi').delete().eq('num', num);
+    if (kab_kota) {
+      q = q.eq('kab_kota', kab_kota);
+    }
+    const { error } = await q;
     return !error;
   } catch(e) {
     return false;
   }
 }
 
-export async function syncPresensi(data: Presensi[]): Promise<boolean> {
+export async function syncPresensi(data: Presensi[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
-    // 1. Fetch existing presensi from Supabase for differential synchronization with retry
-    const { data: existing, error: fetchError } = await queryWithRetry(() => client.from('presensi').select('*'));
+    const { data: existing, error: fetchError } = await safeSelect(client, 'presensi', currentKabKota, isSuperAdmin);
     if (fetchError) {
-      console.warn("Error fetching existing presensi, falling back to full wipe & re-write:", fetchError);
-      const { error: delError } = await client.from('presensi').delete().neq('id', 'CONCRETE_PLACEHOLDER_IMPROVEMENT');
-      if (delError) return false;
-
+      console.warn("Error fetching existing presensi, falling back to full insert:", fetchError);
       if (data.length > 0) {
         const dbRows = data.map(p => ({
           id: p.id,
@@ -505,7 +588,8 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
           materi: p.materi,
           waktu: p.waktu,
           status: p.status,
-          sesi: p.sesi
+          sesi: p.sesi,
+          kab_kota: p.kab_kota || currentKabKota || ''
         }));
         const { error } = await client.from('presensi').insert(dbRows);
         return !error;
@@ -523,8 +607,8 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
     const toInsert: any[] = [];
     const toUpdate: any[] = [];
 
-    // 2. Identify inserts and updates
     data.forEach(p => {
+      const rowKabKota = p.kab_kota || currentKabKota || '';
       const key = `${p.id}_${p.sesi}`;
       localKeys.add(key);
 
@@ -535,7 +619,8 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
           match.utusan !== p.utusan ||
           match.materi !== p.materi ||
           match.waktu !== p.waktu ||
-          match.status !== p.status;
+          match.status !== p.status ||
+          match.kab_kota !== rowKabKota;
 
         if (hasChanged) {
           toUpdate.push({
@@ -546,7 +631,8 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
             materi: p.materi,
             waktu: p.waktu,
             status: p.status,
-            sesi: p.sesi
+            sesi: p.sesi,
+            kab_kota: rowKabKota
           });
         }
       } else {
@@ -557,12 +643,12 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
           materi: p.materi,
           waktu: p.waktu,
           status: p.status,
-          sesi: p.sesi
+          sesi: p.sesi,
+          kab_kota: rowKabKota
         });
       }
     });
 
-    // 3. Identify deletes
     const toDeleteIds: number[] = [];
     existingList.forEach(item => {
       const key = `${item.id}_${item.sesi}`;
@@ -573,7 +659,6 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
 
     let allOk = true;
 
-    // Delete in chunks of 100 for maximum performance and stability
     if (toDeleteIds.length > 0) {
       const chunkSize = 100;
       for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
@@ -586,7 +671,6 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
       }
     }
 
-    // Insert in chunks of 100
     if (toInsert.length > 0) {
       const chunkSize = 100;
       for (let i = 0; i < toInsert.length; i += chunkSize) {
@@ -599,7 +683,6 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
       }
     }
 
-    // Update in chunks of 100 using robustUpsert
     if (toUpdate.length > 0) {
       const chunkSize = 100;
       for (let i = 0; i < toUpdate.length; i += chunkSize) {
@@ -616,7 +699,7 @@ export async function syncPresensi(data: Presensi[]): Promise<boolean> {
   }
 }
 
-export async function syncTim(data: Tim[]): Promise<boolean> {
+export async function syncTim(data: Tim[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
@@ -628,7 +711,9 @@ export async function syncTim(data: Tim[]): Promise<boolean> {
       nama: t.nama,
       role: t.role,
       password: t.password || '',
-      permissions: t.permissions
+      permissions: t.permissions,
+      kab_kota: t.kab_kota || currentKabKota || '',
+      is_superadmin: t.is_superadmin || false
     }));
 
     return await robustUpsert(client, 'tim', rows);
@@ -649,15 +734,14 @@ export async function deleteTimFromSupabase(username: string): Promise<boolean> 
   }
 }
 
-export async function syncBranding(branding: Branding): Promise<boolean> {
+export async function syncBranding(branding: Branding, currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
-    // Dynamically query the branding table first to detect active column casing (e.g. appName vs appname)
-    const { data: existingBranding } = await client.from('branding').select('*').eq('id', 1).maybeSingle();
+    const rowKabKota = branding.kab_kota || currentKabKota || 'Pusat';
+    const { data: existingBranding } = await client.from('branding').select('*').eq('id', 1).eq('kab_kota', rowKabKota).maybeSingle();
     
-    // We will start with a full camelCase payload
     let currentPayload: any = {
       id: 1,
       appName: branding.appName,
@@ -666,15 +750,14 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
       totalSesi: branding.totalSesi,
       logo: branding.logo,
       themeColor: branding.themeColor,
-      delegationType: branding.delegationType || 'PAC'
+      delegationType: branding.delegationType || 'PAC',
+      kab_kota: rowKabKota
     };
 
-    // If existingBranding was found, we align our initial payload with its keys
     if (existingBranding) {
       const dbKeys = Object.keys(existingBranding);
-      const alignedPayload: any = { id: 1 };
+      const alignedPayload: any = { id: 1, kab_kota: rowKabKota };
       
-      // Map properties with casing matching database keys
       if (dbKeys.includes('appName')) alignedPayload.appName = branding.appName;
       else if (dbKeys.includes('appname')) alignedPayload.appname = branding.appName;
       else alignedPayload.appName = branding.appName;
@@ -699,7 +782,6 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
       currentPayload = alignedPayload;
     }
 
-    // Keep track of failed columns to avoid infinite loops
     const failedColumns = new Set<string>();
 
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -710,16 +792,13 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
 
       console.warn(`Sync branding attempt ${attempt + 1} failed:`, error);
 
-      // If it's an "undefined column" error (PostgreSQL error code 42703)
       if (error.code === '42703' && error.message) {
-        // Find column name between quotes, e.g., column "appName" of relation "branding" does not exist
         const match = error.message.match(/column "([^"]+)"/);
         if (match) {
           const missingCol = match[1];
           failedColumns.add(missingCol);
           delete currentPayload[missingCol];
 
-          // If a camelCase variant failed and the lowercase variant hasn't failed yet, try substituting it
           if (missingCol === 'appName' && !failedColumns.has('appname')) {
             currentPayload.appname = branding.appName;
           } else if (missingCol === 'totalSesi' && !failedColumns.has('totalsesi')) {
@@ -728,15 +807,14 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
             currentPayload.themecolor = branding.themeColor;
           } else if (missingCol === 'delegationType' && !failedColumns.has('delegationtype')) {
             currentPayload.delegationtype = branding.delegationType || 'PAC';
+          } else if (missingCol === 'kab_kota') {
+            console.warn("Table branding does not support kab_kota yet.");
           }
-          
           continue;
         }
       }
 
-      // If we got a different error or we couldn't match a column name, let's try some standard fallback payloads
       if (attempt === 0) {
-        // Fallback 1: Pure lowercase schema payload
         currentPayload = {
           id: 1,
           appname: branding.appName,
@@ -745,13 +823,13 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
           totalsesi: branding.totalSesi,
           logo: branding.logo,
           themecolor: branding.themeColor,
-          delegationtype: branding.delegationType || 'PAC'
+          delegationtype: branding.delegationType || 'PAC',
+          kab_kota: rowKabKota
         };
         continue;
       }
 
       if (attempt === 1) {
-        // Fallback 2: Minimal essential payload (just ID, organisasi, cabang, logo, which are guaranteed to exist or have standard lowercase names)
         currentPayload = {
           id: 1,
           organisasi: branding.organisasi,
@@ -761,7 +839,6 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
         continue;
       }
 
-      // If everything else fails, return false
       return false;
     }
 
@@ -772,7 +849,7 @@ export async function syncBranding(branding: Branding): Promise<boolean> {
   }
 }
 
-export async function fetchAllFromSupabase(): Promise<any> {
+export async function fetchAllFromSupabase(currentKabKota?: string, isSuperAdmin?: boolean): Promise<any> {
   const client = getSupabaseClient();
   if (!client) {
     return {
@@ -782,14 +859,12 @@ export async function fetchAllFromSupabase(): Promise<any> {
   }
 
   try {
-    // Fetch all sequentially with robust retry mechanisms to prevent connection pool exhaustion and database cold starts
-    const resPeserta = await queryWithRetry(() => client.from('peserta').select('*'));
-    const resSesi = await queryWithRetry(() => client.from('sesi').select('*').order('num', { ascending: true }));
-    const resPresensi = await queryWithRetry(() => client.from('presensi').select('*'));
-    const resTim = await queryWithRetry(() => client.from('tim').select('*'));
-    const resBranding = await queryWithRetry(() => client.from('branding').select('*').eq('id', 1).maybeSingle());
+    const resPeserta = await safeSelect(client, 'peserta', currentKabKota, isSuperAdmin);
+    const resSesi = await safeSelect(client, 'sesi', currentKabKota, isSuperAdmin, 'num');
+    const resPresensi = await safeSelect(client, 'presensi', currentKabKota, isSuperAdmin);
+    const resTim = await safeSelect(client, 'tim', currentKabKota, isSuperAdmin);
+    const resBranding = await safeSelect(client, 'branding', currentKabKota, isSuperAdmin);
 
-    // Check for auth errors first
     const allErrors = [resPeserta.error, resSesi.error, resPresensi.error, resTim.error, resBranding.error];
     const authError = allErrors.find((err: any) => 
       err && (
@@ -806,7 +881,6 @@ export async function fetchAllFromSupabase(): Promise<any> {
       return { errorType: 'auth', errors: [authError] };
     }
 
-    // Check if CORE tables (peserta, sesi, presensi) are missing
     const coreErrors = [resPeserta.error, resSesi.error, resPresensi.error].filter(Boolean);
     const hasCoreMissingTable = coreErrors.some((err: any) => 
       err.code === '42P01' || 
@@ -817,18 +891,14 @@ export async function fetchAllFromSupabase(): Promise<any> {
       return { errorType: 'schema', errors: coreErrors };
     }
 
-    // If there is any other core error
     if (coreErrors.length > 0) {
       return { errorType: 'connection', errors: coreErrors };
     }
 
-    // Now we know core tables are fully available and connected!
-    // What if auxiliary tables (tim, branding) are missing or errored? That's fine! We'll just fallback to local data.
     const peserta = resPeserta.data || [];
     const rawSesi = resSesi.data || [];
     const presensi = resPresensi.data || [];
 
-    // Normalize Sesi column casing
     const sesi = rawSesi.map((s: any) => ({
       num: s.num,
       materi: s.materi || '',
@@ -837,10 +907,10 @@ export async function fetchAllFromSupabase(): Promise<any> {
       duration: s.duration !== undefined ? s.duration : 90,
       maxLate: s.maxLate !== undefined ? s.maxLate : (s.maxlate !== undefined ? s.maxlate : 10),
       toiletLimit: s.toiletLimit !== undefined ? s.toiletLimit : (s.toiletlimit !== undefined ? s.toiletlimit : 5),
-      active: s.active !== undefined ? s.active : false
+      active: s.active !== undefined ? s.active : false,
+      kab_kota: s.kab_kota || ''
     }));
     
-    // Fallback for tim if missing or errored
     let tim = [];
     if (!resTim.error) {
       tim = resTim.data || [];
@@ -848,16 +918,23 @@ export async function fetchAllFromSupabase(): Promise<any> {
       console.warn("Table 'tim' missing or errored in database, using local fallback:", resTim.error);
     }
 
-    // Fallback for branding if missing or errored
     let branding = null;
     if (!resBranding.error) {
-      branding = resBranding.data;
+      const brandingList = resBranding.data || [];
+      if (currentKabKota && !isSuperAdmin) {
+        branding = brandingList.find((b: any) => (b.kab_kota || '').toLowerCase() === currentKabKota.toLowerCase()) || brandingList[0];
+      } else {
+        branding = brandingList[0];
+      }
     } else {
       console.warn("Table 'branding' missing or errored in database, using local fallback:", resBranding.error);
     }
 
     return {
-      peserta,
+      peserta: peserta.map((p: any) => ({
+        ...p,
+        kab_kota: p.kab_kota || ''
+      })),
       sesi,
       presensi: presensi.map(p => ({
         id: p.id,
@@ -866,14 +943,17 @@ export async function fetchAllFromSupabase(): Promise<any> {
         materi: p.materi,
         waktu: p.waktu,
         status: p.status as "Tepat Waktu" | "Terlambat",
-        sesi: p.sesi
+        sesi: p.sesi,
+        kab_kota: p.kab_kota || ''
       })),
       tim: tim.map(t => ({
         username: t.username,
         nama: t.nama,
-        role: t.role as "Admin" | "Operator",
+        role: t.role as "Admin" | "Operator" | "SuperAdmin",
         password: t.password,
-        permissions: t.permissions || []
+        permissions: t.permissions || [],
+        kab_kota: t.kab_kota || '',
+        is_superadmin: t.is_superadmin || false
       })),
       branding: branding ? {
         appName: branding.appName || branding.appname || 'SI-ANSOR PRO v7.0',
@@ -882,7 +962,8 @@ export async function fetchAllFromSupabase(): Promise<any> {
         totalSesi: branding.totalSesi !== undefined ? branding.totalSesi : (branding.totalsesi !== undefined ? branding.totalsesi : 14),
         logo: branding.logo,
         themeColor: (branding.themeColor || branding.themecolor || 'emerald') as "emerald" | "navy" | "indigo" | "rose" | "amber",
-        delegationType: branding.delegationType || branding.delegationtype || 'PAC'
+        delegationType: branding.delegationType || branding.delegationtype || 'PAC',
+        kab_kota: branding.kab_kota || ''
       } : null,
       auxiliaryMissing: !!(resTim.error || resBranding.error)
     };
@@ -917,14 +998,14 @@ export async function syncRekapKelulusan(data: {
   evaluasi_sistem: string;
   no_sertifikat: string;
   status_kelulusan: string;
-}[]): Promise<boolean> {
+  kab_kota?: string;
+}[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
   if (!client) return false;
 
   try {
     if (data.length === 0) return true;
 
-    // Check if the rekap_kelulusan table exists
     let hasTable = true;
     try {
       const { error: checkError } = await queryWithRetry(() => client.from('rekap_kelulusan').select('id').limit(1));
@@ -950,7 +1031,8 @@ export async function syncRekapKelulusan(data: {
       evaluasi_sistem: r.evaluasi_sistem,
       no_sertifikat: r.no_sertifikat,
       status_kelulusan: r.status_kelulusan,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      kab_kota: r.kab_kota || currentKabKota || ''
     }));
 
     return await robustUpsert(client, 'rekap_kelulusan', rows);

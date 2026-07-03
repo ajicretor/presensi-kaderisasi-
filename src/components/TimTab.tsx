@@ -22,11 +22,15 @@ export default function TimTab({
   const [formNama, setFormNama] = useState('');
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formRole, setFormRole] = useState<'Admin' | 'Operator'>('Operator');
+  const [formRole, setFormRole] = useState<'Admin' | 'Operator' | 'SuperAdmin'>('Operator');
+  const [formKabKota, setFormKabKota] = useState('');
+  const [formIsSuperAdmin, setFormIsSuperAdmin] = useState(false);
   
   // Selected permissions (for Operators)
   const defaultPerms = ['dash', 'scan', 'rekap'];
   const [perms, setPerms] = useState<string[]>(defaultPerms);
+
+  const isSuperAdminUser = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
 
   const openAddModal = () => {
     setEditIndex(null);
@@ -34,6 +38,8 @@ export default function TimTab({
     setFormUsername('');
     setFormPassword('');
     setFormRole('Operator');
+    setFormKabKota(currentUser.kab_kota || 'KABUPATEN BOGOR');
+    setFormIsSuperAdmin(false);
     setPerms(defaultPerms);
     setIsOpen(true);
   };
@@ -44,6 +50,8 @@ export default function TimTab({
     setFormUsername(t.username);
     setFormPassword(t.password || '••••••••');
     setFormRole(t.role);
+    setFormKabKota(t.kab_kota || '');
+    setFormIsSuperAdmin(t.is_superadmin || false);
     setPerms(t.permissions || []);
     setIsOpen(true);
   };
@@ -65,7 +73,9 @@ export default function TimTab({
       username: formUsername.trim().toLowerCase(),
       password: formPassword === '••••••••' ? (tim[editIndex!]?.password || '') : formPassword,
       role: formRole,
-      permissions: formRole === 'Admin' ? ['dash', 'scan', 'sesi', 'peserta', 'rekap', 'kelulusan'] : perms
+      permissions: formRole === 'Admin' || formRole === 'SuperAdmin' ? ['dash', 'scan', 'sesi', 'peserta', 'rekap', 'kelulusan'] : perms,
+      kab_kota: formIsSuperAdmin || formRole === 'SuperAdmin' ? '' : formKabKota,
+      is_superadmin: formIsSuperAdmin || formRole === 'SuperAdmin'
     }, editIndex !== null ? editIndex : undefined);
 
     setIsOpen(false);
@@ -101,6 +111,7 @@ export default function TimTab({
               <th className="p-4">USERNAME</th>
               <th className="p-4">PASSWORD</th>
               <th className="p-4">ROLE / LEVEL</th>
+              <th className="p-4">KABUPATEN / KOTA</th>
               <th className="p-4 text-center w-36">AKSI</th>
             </tr>
           </thead>
@@ -127,10 +138,17 @@ export default function TimTab({
                 </td>
                 <td className="p-4">
                   <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                    t.role === 'Admin' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400'
+                    t.role === 'SuperAdmin' || t.is_superadmin 
+                      ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400'
+                      : t.role === 'Admin' 
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' 
+                        : 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400'
                   }`}>
-                    {t.role}
+                    {t.role === 'SuperAdmin' || t.is_superadmin ? 'SUPER ADMIN' : t.role}
                   </span>
+                </td>
+                <td className="p-4 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase">
+                  {t.is_superadmin || t.role === 'SuperAdmin' ? 'SEMUA (PUSAT)' : (t.kab_kota || '-')}
                 </td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center space-x-1">
@@ -219,13 +237,76 @@ export default function TimTab({
                 <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">ROLE / OTORITAS</label>
                 <select
                   value={formRole}
-                  onChange={(e) => setFormRole(e.target.value as any)}
+                  onChange={(e) => {
+                    const newRole = e.target.value as any;
+                    setFormRole(newRole);
+                    if (newRole === 'SuperAdmin') {
+                      setFormIsSuperAdmin(true);
+                    } else if (newRole === 'Operator') {
+                      setFormIsSuperAdmin(false);
+                    }
+                  }}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2.5 rounded-lg text-xs font-semibold dark:text-white dark:bg-slate-950"
                 >
                   <option value="Operator">Operator Lapangan (Pemindai)</option>
                   <option value="Admin">Administrator (Wilayah)</option>
+                  {isSuperAdminUser && <option value="SuperAdmin">Super Administrator (Pusat)</option>}
                 </select>
               </div>
+
+              {isSuperAdminUser && formRole !== 'SuperAdmin' && (
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">WILAYAH OPERASI (KAB/KOTA)</label>
+                  <select
+                    value={formKabKota}
+                    onChange={(e) => setFormKabKota(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2.5 rounded-lg text-xs font-semibold dark:text-white dark:bg-slate-950"
+                  >
+                    <option value="KABUPATEN BOGOR">Kabupaten Bogor</option>
+                    <option value="KOTA BOGOR">Kota Bogor</option>
+                    <option value="KABUPATEN SUKABUMI">Kabupaten Sukabumi</option>
+                    <option value="KOTA SUKABUMI">Kota Sukabumi</option>
+                    <option value="KABUPATEN CIANJUR">Kabupaten Cianjur</option>
+                    <option value="KABUPATEN BANDUNG">Kabupaten Bandung</option>
+                    <option value="KABUPATEN BANDUNG BARAT">Kabupaten Bandung Barat</option>
+                    <option value="KOTA BANDUNG">Kota Bandung</option>
+                    <option value="KOTA CIMAHI">Kota Cimahi</option>
+                    <option value="KABUPATEN GARUT">Kabupaten Garut</option>
+                    <option value="KABUPATEN TASIKMALAYA">Kabupaten Tasikmalaya</option>
+                    <option value="KOTA TASIKMALAYA">Kota Tasikmalaya</option>
+                    <option value="KABUPATEN CIAMIS">Kabupaten Ciamis</option>
+                    <option value="KOTA BANJAR">Kota Banjar</option>
+                    <option value="KABUPATEN PANGANDARAN">Kabupaten Pangandaran</option>
+                    <option value="KABUPATEN KUNINGAN">Kabupaten Kuningan</option>
+                    <option value="KABUPATEN CIREBON">Kabupaten Cirebon</option>
+                    <option value="KOTA CIREBON">Kota Cirebon</option>
+                    <option value="KABUPATEN MAJALENGKA">Kabupaten Majalengka</option>
+                    <option value="KABUPATEN SUMEDANG">Kabupaten Sumedang</option>
+                    <option value="KABUPATEN INDRAMAYU">Kabupaten Indramayu</option>
+                    <option value="KABUPATEN SUBANG">Kabupaten Subang</option>
+                    <option value="KABUPATEN PURWAKARTA">Kabupaten Purwakarta</option>
+                    <option value="KABUPATEN KARAWANG">Kabupaten Karawang</option>
+                    <option value="KABUPATEN BEKASI">Kabupaten Bekasi</option>
+                    <option value="KOTA BEKASI">Kota Bekasi</option>
+                    <option value="KOTA DEPOK">Kota Depok</option>
+                  </select>
+                </div>
+              )}
+
+              {isSuperAdminUser && formRole !== 'SuperAdmin' && (
+                <div className="flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isSuperAdminCheckbox"
+                    checked={formIsSuperAdmin}
+                    onChange={(e) => setFormIsSuperAdmin(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 border-slate-350 bg-slate-50"
+                  />
+                  <label htmlFor="isSuperAdminCheckbox" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none cursor-pointer">
+                    Jadikan Super Administrator Pusat
+                  </label>
+                </div>
+              )}
 
               {/* Access Checkboxes for Operators */}
               {formRole === 'Operator' && (

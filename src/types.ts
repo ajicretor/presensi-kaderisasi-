@@ -11,6 +11,7 @@ export interface Peserta {
   no_sertifikat: string;
   izin_menit: number;
   created_at?: string;
+  kab_kota?: string; // multi-tenancy
 }
 
 export interface Sesi {
@@ -22,6 +23,7 @@ export interface Sesi {
   maxLate: number; // minutes
   toiletLimit: number; // minutes
   active: boolean;
+  kab_kota?: string; // multi-tenancy
 }
 
 export interface Presensi {
@@ -33,14 +35,17 @@ export interface Presensi {
   status: "Tepat Waktu" | "Terlambat";
   sesi: number;
   created_at?: string;
+  kab_kota?: string; // multi-tenancy
 }
 
 export interface Tim {
   username: string;
   nama: string;
-  role: "Admin" | "Operator";
+  role: "Admin" | "Operator" | "SuperAdmin"; // Added SuperAdmin role
   password?: string;
   permissions: string[]; // ["dash", "scan", "sesi", "peserta", "rekap", "kelulusan"]
+  kab_kota?: string; // multi-tenancy (empty/null for global superadmin)
+  is_superadmin?: boolean; // explicit superadmin flag
 }
 
 export interface Branding {
@@ -51,6 +56,7 @@ export interface Branding {
   logo: string; // SVG or HTML
   themeColor: "emerald" | "navy" | "indigo" | "rose" | "amber";
   delegationType?: string; // e.g. "PAC", "PC", "Kabupaten", "Kota", etc.
+  kab_kota?: string; // multi-tenancy
 }
 
 export interface SystemState {

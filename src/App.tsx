@@ -82,6 +82,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [selectedKabKotaFilter, setSelectedKabKotaFilter] = useState<string>('all');
 
   // Supabase State
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -173,10 +174,11 @@ export default function App() {
     initConnection();
   }, []);
 
-  const triggerSupabaseSync = async () => {
+  const triggerSupabaseSync = async (userOverride?: Tim) => {
     setIsSyncing(true);
     try {
-      const data = await fetchAllFromSupabase();
+      const activeUser = userOverride || currentUser;
+      const data = await fetchAllFromSupabase(activeUser?.kab_kota, activeUser?.is_superadmin);
       if (data) {
         if (data.errorType) {
           setSupabaseConnected(false);
@@ -189,7 +191,7 @@ export default function App() {
 
           setSupabaseErrorDetail(errorDetails);
 
-          if (currentUser) {
+          if (activeUser) {
             if (data.errorType === 'auth') {
               triggerAlert(
                 "Koneksi Supabase Gagal",
@@ -243,23 +245,23 @@ export default function App() {
         // Jika database Cloud kosong dan ada data lokal di browser, unggah data lokal ke Cloud (Upward Sync)
         if (isCloudEmpty && hasLocalData) {
           if (localDataParsed.peserta && localDataParsed.peserta.length > 0) {
-            await syncPeserta(localDataParsed.peserta);
+            await syncPeserta(localDataParsed.peserta, activeUser?.kab_kota, activeUser?.is_superadmin);
             setPeserta(localDataParsed.peserta);
           }
           if (localDataParsed.sesi && localDataParsed.sesi.length > 0) {
-            await syncSesi(localDataParsed.sesi);
+            await syncSesi(localDataParsed.sesi, activeUser?.kab_kota, activeUser?.is_superadmin);
             setSesi(localDataParsed.sesi);
           }
           if (localDataParsed.presensi && localDataParsed.presensi.length > 0) {
-            await syncPresensi(localDataParsed.presensi);
+            await syncPresensi(localDataParsed.presensi, activeUser?.kab_kota, activeUser?.is_superadmin);
             setPresensi(localDataParsed.presensi);
           }
           if (localDataParsed.tim && localDataParsed.tim.length > 0) {
-            await syncTim(localDataParsed.tim);
+            await syncTim(localDataParsed.tim, activeUser?.kab_kota, activeUser?.is_superadmin);
             setTim(localDataParsed.tim);
           }
           if (localDataParsed.branding) {
-            await syncBranding(localDataParsed.branding);
+            await syncBranding(localDataParsed.branding, activeUser?.kab_kota, activeUser?.is_superadmin);
             setBranding(localDataParsed.branding);
           }
           
@@ -281,7 +283,7 @@ export default function App() {
               ...finalBranding,
               logo: DEFAULT_BRANDING.logo
             };
-            await syncBranding(finalBranding);
+            await syncBranding(finalBranding, activeUser?.kab_kota, activeUser?.is_superadmin);
           }
           setBranding(finalBranding);
 
@@ -324,11 +326,11 @@ export default function App() {
         
         try {
           // Sync all tables to Supabase
-          const okPeserta = await syncPeserta(peserta);
-          const okSesi = await syncSesi(sesi);
-          const okPresensi = await syncPresensi(presensi);
-          const okTim = await syncTim(tim);
-          const okBranding = await syncBranding(branding);
+          const okPeserta = await syncPeserta(peserta, currentUser?.kab_kota, currentUser?.is_superadmin);
+          const okSesi = await syncSesi(sesi, currentUser?.kab_kota, currentUser?.is_superadmin);
+          const okPresensi = await syncPresensi(presensi, currentUser?.kab_kota, currentUser?.is_superadmin);
+          const okTim = await syncTim(tim, currentUser?.kab_kota, currentUser?.is_superadmin);
+          const okBranding = await syncBranding(branding, currentUser?.kab_kota, currentUser?.is_superadmin);
 
           if (okPeserta && okSesi && okPresensi && okTim && okBranding) {
             triggerAlert("Unggah Sukses", "Seluruh data lokal berhasil disinkronkan dan diunggah ke database Supabase Cloud!", "success");
@@ -356,7 +358,7 @@ export default function App() {
         if (!yes) return;
 
         try {
-          const data = await fetchAllFromSupabase();
+          const data = await fetchAllFromSupabase(currentUser?.kab_kota, currentUser?.is_superadmin);
           if (data) {
             if (data.errorType) {
               triggerAlert("Gagal Sinkronisasi", "Koneksi ke database bermasalah atau tabel tidak ditemukan.", "danger");
@@ -425,12 +427,17 @@ export default function App() {
       }
     }
 
+    const pWithKabKota = {
+      ...p,
+      kab_kota: p.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
+    };
+
     let newList = [...peserta];
     let newPresensi = [...presensi];
 
     if (isIdRenamed) {
-      newList = peserta.map(k => k.id === originalId ? p : k);
-      newPresensi = presensi.map(pr => pr.id === originalId ? { ...pr, id: p.id } : pr);
+      newList = peserta.map(k => k.id === originalId ? pWithKabKota : k);
+      newPresensi = presensi.map(pr => pr.id === originalId ? { ...pr, id: pWithKabKota.id } : pr);
       
       setPeserta(newList);
       setPresensi(newPresensi);
@@ -440,36 +447,36 @@ export default function App() {
         await deletePesertaFromSupabase(originalId);
         await deleteRekapKelulusanFromSupabase(originalId);
         
-        const okPeserta = await syncPeserta([p]);
-        const okPresensi = await syncPresensi(newPresensi);
+        const okPeserta = await syncPeserta([pWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
+        const okPresensi = await syncPresensi(newPresensi, currentUser?.kab_kota, currentUser?.is_superadmin);
         await syncRekapToSupabase(newList);
         
         if (okPeserta && okPresensi) {
-          triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${p.id}".`, "success");
+          triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${pWithKabKota.id}".`, "success");
         } else {
           triggerAlert("Data Disimpan", `Data terupdate dengan beberapa sinkronisasi cloud tertunda.`, "warning");
         }
       } else {
-        triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${p.id}" secara lokal.`, "success");
+        triggerAlert("Data Disimpan", `ID / CARD peserta berhasil diubah dari "${originalId}" menjadi "${pWithKabKota.id}" secara lokal.`, "success");
       }
     } else {
-      const isNew = !peserta.some(k => k.id === p.id);
-      newList = isNew ? [...peserta, p] : peserta.map(k => k.id === p.id ? p : k);
+      const isNew = !peserta.some(k => k.id === pWithKabKota.id);
+      newList = isNew ? [...peserta, pWithKabKota] : peserta.map(k => k.id === pWithKabKota.id ? pWithKabKota : k);
       
       setPeserta(newList);
       saveStateToLocalStorage({ peserta: newList });
 
       if (supabaseConnected) {
-        const ok = await syncPeserta([p]);
+        const ok = await syncPeserta([pWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
         await syncRekapToSupabase(newList);
-        if (ok) triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan secara real-time.`, "success");
+        if (ok) triggerAlert("Data Disimpan", `Data kader ${pWithKabKota.nama} tersimpan secara real-time.`, "success");
       } else {
-        triggerAlert("Data Disimpan", `Data kader ${p.nama} tersimpan di penyimpanan lokal.`, "success");
+        triggerAlert("Data Disimpan", `Data kader ${pWithKabKota.nama} tersimpan di penyimpanan lokal.`, "success");
       }
     }
   };
 
-  const handleDeletePeserta = (id: string) => {
+   const handleDeletePeserta = (id: string) => {
     triggerConfirm("Hapus Anggota", "Yakin ingin menghapus data kader ini secara permanen dari server?", async (yes) => {
       if (!yes) return;
       
@@ -483,7 +490,7 @@ export default function App() {
       if (supabaseConnected) {
         await deletePesertaFromSupabase(id);
         await deleteRekapKelulusanFromSupabase(id);
-        await syncPresensi(newPresensi);
+        await syncPresensi(newPresensi, currentUser?.kab_kota, currentUser?.is_superadmin);
       }
       triggerAlert("Hapus Berhasil", "Data kader telah dihapus dari sistem.", "success");
     });
@@ -491,14 +498,18 @@ export default function App() {
 
   // --- ACTIONS: SESI ---
   const handleSaveSesi = async (s: Sesi) => {
+    const sWithKabKota = {
+      ...s,
+      kab_kota: s.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
+    };
     const isNew = !sesi.some(x => x.num === s.num);
-    const newList = isNew ? [...sesi, s] : sesi.map(x => x.num === s.num ? s : x);
+    const newList = isNew ? [...sesi, sWithKabKota] : sesi.map(x => x.num === s.num ? sWithKabKota : x);
     
     setSesi(newList);
     saveStateToLocalStorage({ sesi: newList });
 
     if (supabaseConnected) {
-      await syncSesi([s]);
+      await syncSesi([sWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
     }
     triggerAlert("Sesi Disimpan", `Konfigurasi Sesi ${s.num} berhasil tersimpan.`, "success");
   };
@@ -507,12 +518,13 @@ export default function App() {
     triggerConfirm("Hapus Sesi", `Yakin ingin menghapus Sesi ${num} dari jadwal program?`, async (yes) => {
       if (!yes) return;
       
+      const targetSesi = sesi.find(x => x.num === num);
       const newList = sesi.filter(x => x.num !== num);
       setSesi(newList);
       saveStateToLocalStorage({ sesi: newList });
 
       if (supabaseConnected) {
-        await deleteSesiFromSupabase(num);
+        await deleteSesiFromSupabase(num, targetSesi?.kab_kota || currentUser?.kab_kota);
       }
       triggerAlert("Sesi Terhapus", `Modul pengajaran Sesi ${num} ditiadakan.`, "success");
     });
@@ -525,7 +537,7 @@ export default function App() {
     saveStateToLocalStorage({ sesi: updated, activeSesiId: num });
 
     if (supabaseConnected) {
-      await syncSesi(updated);
+      await syncSesi(updated, currentUser?.kab_kota, currentUser?.is_superadmin);
     }
   };
 
@@ -567,7 +579,8 @@ export default function App() {
       materi: currentSesi?.materi || "Topik Pembahasan",
       waktu: waktuStr,
       status: finalStatus,
-      sesi: activeSesiId
+      sesi: activeSesiId,
+      kab_kota: p.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
     };
 
     const newLogs = [...presensi, newRow];
@@ -575,7 +588,7 @@ export default function App() {
     saveStateToLocalStorage({ presensi: newLogs });
 
     if (supabaseConnected) {
-      await syncPresensi(newLogs);
+      await syncPresensi(newLogs, currentUser?.kab_kota, currentUser?.is_superadmin);
     }
 
     if (!skipAlert) {
@@ -606,10 +619,11 @@ export default function App() {
           izin_menit: p.izin_menit || 0,
           evaluasi_sistem: p.status_kelulusan,
           no_sertifikat: p.no_sertifikat || '',
-          status_kelulusan: p.status_kelulusan
+          status_kelulusan: p.status_kelulusan,
+          kab_kota: p.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
         };
       });
-      await syncRekapKelulusan(rekapList);
+      await syncRekapKelulusan(rekapList, currentUser?.kab_kota, currentUser?.is_superadmin);
     } catch (e) {
       console.error("Failed to sync rekap kelulusan:", e);
     }
@@ -623,7 +637,7 @@ export default function App() {
     if (supabaseConnected) {
       const matched = newList.find(x => x.id === id);
       if (matched) {
-        await syncPeserta([matched]);
+        await syncPeserta([matched], currentUser?.kab_kota, currentUser?.is_superadmin);
         await syncRekapToSupabase(newList);
       }
     }
@@ -634,7 +648,7 @@ export default function App() {
     saveStateToLocalStorage({ peserta: updatedPelestari });
 
     if (supabaseConnected) {
-      await syncPeserta(updatedPelestari);
+      await syncPeserta(updatedPelestari, currentUser?.kab_kota, currentUser?.is_superadmin);
       await syncRekapToSupabase(updatedPelestari);
     }
     triggerAlert("Evaluasi Rampung", "Model AI Decision Tree C4.5 berhasil memperbarui status seluruh kader.", "success");
@@ -642,18 +656,22 @@ export default function App() {
 
   // --- ACTIONS: TIM ---
   const handleSaveTim = async (t: Tim, index?: number) => {
+    const tWithKabKota = {
+      ...t,
+      kab_kota: t.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
+    };
     let newList = [...tim];
     if (index !== undefined) {
-      newList[index] = t;
+      newList[index] = tWithKabKota;
     } else {
-      newList.push(t);
+      newList.push(tWithKabKota);
     }
 
     setTim(newList);
     saveStateToLocalStorage({ tim: newList });
 
     if (supabaseConnected) {
-      await syncTim([t]);
+      await syncTim([tWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
     }
     triggerAlert("Kru Operator Disimpan", `Data tim pelaksana dengan Username ${t.username} berhasil disimpan.`, "success");
   };
@@ -681,11 +699,15 @@ export default function App() {
 
   // --- ACTIONS: BRANDING ---
   const handleSaveBranding = async (b: Branding) => {
-    setBranding(b);
-    saveStateToLocalStorage({ branding: b });
+    const bWithKabKota = {
+      ...b,
+      kab_kota: b.kab_kota || (currentUser?.is_superadmin && selectedKabKotaFilter !== 'all' ? selectedKabKotaFilter : (currentUser?.kab_kota || 'KABUPATEN BOGOR'))
+    };
+    setBranding(bWithKabKota);
+    saveStateToLocalStorage({ branding: bWithKabKota });
 
     if (supabaseConnected) {
-      await syncBranding(b);
+      await syncBranding(bWithKabKota, currentUser?.kab_kota, currentUser?.is_superadmin);
     }
     triggerAlert("Visual Disimpan", "Perubahan setelan visual branding sukses diterapkan.", "success");
   };
@@ -784,7 +806,8 @@ export default function App() {
   }
 
   // Permissions validation
-  const isAdmin = currentUser.role === 'Admin';
+  const isSuperAdmin = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
+  const isAdmin = currentUser.role === 'Admin' || isSuperAdmin;
   const perms = currentUser.permissions || [];
 
   const canDash = isAdmin || perms.includes('dash');
@@ -793,6 +816,22 @@ export default function App() {
   const canPeserta = isAdmin || perms.includes('peserta');
   const canRekap = isAdmin || perms.includes('rekap'); // Rekap Data permission check
   const canKelulusan = isAdmin || perms.includes('kelulusan');
+
+  const displayedPeserta = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
+    ? peserta.filter(p => p.kab_kota === selectedKabKotaFilter)
+    : peserta;
+
+  const displayedSesi = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
+    ? sesi.filter(s => s.kab_kota === selectedKabKotaFilter)
+    : sesi;
+
+  const displayedPresensi = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
+    ? presensi.filter(pr => pr.kab_kota === selectedKabKotaFilter)
+    : presensi;
+
+  const displayedTim = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
+    ? tim.filter(t => t.kab_kota === selectedKabKotaFilter)
+    : tim;
 
   const handleLogout = () => {
     triggerConfirm("Ke luar Akun", "Yakin ingin keluar dari panel operator?", (yes) => {
@@ -1010,6 +1049,50 @@ export default function App() {
           </div>
 
           <div className="flex items-center space-x-3 shrink-0">
+            {isSuperAdmin && (
+              <div className="flex items-center space-x-2 mr-2">
+                <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 hidden sm:inline-block">Wilayah:</span>
+                <select
+                  value={selectedKabKotaFilter}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedKabKotaFilter(val);
+                    triggerAlert("Filter Wilayah", `Menampilkan data wilayah: ${val === 'all' ? 'Semua Wilayah' : val}`, "success");
+                  }}
+                  className="bg-slate-100 dark:bg-navy-950 text-slate-800 dark:text-white border border-slate-200 dark:border-navy-800 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-amber-500 focus:outline-none font-bold"
+                >
+                  <option value="all">Semua Kabupaten/Kota</option>
+                  <option value="KABUPATEN BOGOR">Kabupaten Bogor</option>
+                  <option value="KOTA BOGOR">Kota Bogor</option>
+                  <option value="KABUPATEN SUKABUMI">Kabupaten Sukabumi</option>
+                  <option value="KOTA SUKABUMI">Kota Sukabumi</option>
+                  <option value="KABUPATEN CIANJUR">Kabupaten Cianjur</option>
+                  <option value="KABUPATEN BANDUNG">Kabupaten Bandung</option>
+                  <option value="KABUPATEN BANDUNG BARAT">Kabupaten Bandung Barat</option>
+                  <option value="KOTA BANDUNG">Kota Bandung</option>
+                  <option value="KOTA CIMAHI">Kota Cimahi</option>
+                  <option value="KABUPATEN GARUT">Kabupaten Garut</option>
+                  <option value="KABUPATEN TASIKMALAYA">Kabupaten Tasikmalaya</option>
+                  <option value="KOTA TASIKMALAYA">Kota Tasikmalaya</option>
+                  <option value="KABUPATEN CIAMIS">Kabupaten Ciamis</option>
+                  <option value="KOTA BANJAR">Kota Banjar</option>
+                  <option value="KABUPATEN PANGANDARAN">Kabupaten Pangandaran</option>
+                  <option value="KABUPATEN KUNINGAN">Kabupaten Kuningan</option>
+                  <option value="KABUPATEN CIREBON">Kabupaten Cirebon</option>
+                  <option value="KOTA CIREBON">Kota Cirebon</option>
+                  <option value="KABUPATEN MAJALENGKA">Kabupaten Majalengka</option>
+                  <option value="KABUPATEN SUMEDANG">Kabupaten Sumedang</option>
+                  <option value="KABUPATEN INDRAMAYU">Kabupaten Indramayu</option>
+                  <option value="KABUPATEN SUBANG">Kabupaten Subang</option>
+                  <option value="KABUPATEN PURWAKARTA">Kabupaten Purwakarta</option>
+                  <option value="KABUPATEN KARAWANG">Kabupaten Karawang</option>
+                  <option value="KABUPATEN BEKASI">Kabupaten Bekasi</option>
+                  <option value="KOTA BEKASI">Kota Bekasi</option>
+                  <option value="KOTA DEPOK">Kota Depok</option>
+                </select>
+              </div>
+            )}
+
             {/* Theme toggle indicator */}
             <button
               onClick={toggleTheme}
@@ -1036,9 +1119,9 @@ export default function App() {
           
           {activeTab === 'dash' && (
             <DashboardTab
-              peserta={peserta}
-              sesi={sesi}
-              presensi={presensi}
+              peserta={displayedPeserta}
+              sesi={displayedSesi}
+              presensi={displayedPresensi}
               branding={branding}
               activeSesiId={activeSesiId}
               onResetCache={handleResetCache}
@@ -1051,9 +1134,9 @@ export default function App() {
 
           {activeTab === 'scan' && (
             <ScanTab
-              peserta={peserta}
-              sesi={sesi}
-              presensi={presensi}
+              peserta={displayedPeserta}
+              sesi={displayedSesi}
+              presensi={displayedPresensi}
               branding={branding}
               onRecordPresence={handleRecordPresence}
               activeSesiId={activeSesiId}
@@ -1062,7 +1145,7 @@ export default function App() {
 
           {activeTab === 'sesi' && (
             <SesiTab
-              sesi={sesi}
+              sesi={displayedSesi}
               onSaveSesi={handleSaveSesi}
               onDeleteSesi={handleDeleteSesi}
               onSetActiveSesi={handleSetActiveSesi}
@@ -1073,7 +1156,7 @@ export default function App() {
 
           {activeTab === 'peserta' && (
             <PesertaTab
-              peserta={peserta}
+              peserta={displayedPeserta}
               branding={branding}
               onSavePeserta={handleSavePeserta}
               onDeletePeserta={handleDeletePeserta}
@@ -1083,8 +1166,8 @@ export default function App() {
 
           {activeTab === 'rekap' && (
             <RekapTab
-              presensi={presensi}
-              sesi={sesi}
+              presensi={displayedPresensi}
+              sesi={displayedSesi}
               branding={branding}
               currentUserRole={currentUser.role}
               currentUserPermissions={currentUser.permissions}
@@ -1094,9 +1177,9 @@ export default function App() {
 
           {activeTab === 'kelulusan' && (
             <KelulusanTab
-              peserta={peserta}
-              sesi={sesi}
-              presensi={presensi}
+              peserta={displayedPeserta}
+              sesi={displayedSesi}
+              presensi={displayedPresensi}
               branding={branding}
               onSaveEvaluasi={handleSaveEvaluasi}
               onBulkUpdateKelulusan={handleBulkUpdateKelulusan}
@@ -1108,7 +1191,7 @@ export default function App() {
 
           {activeTab === 'tim' && (
             <TimTab
-              tim={tim}
+              tim={displayedTim}
               onSaveTim={handleSaveTim}
               onDeleteTim={handleDeleteTim}
               currentUser={currentUser}
