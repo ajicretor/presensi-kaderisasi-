@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown, Settings } from 'lucide-react';
 import { Peserta, Branding } from '../types';
 
 interface PesertaTabProps {
@@ -21,6 +21,55 @@ export default function PesertaTab({
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [sortBy, setSortBy] = useState<'id' | 'nama' | 'utusan' | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  // Custom ID Card Prefix States
+  const [showIdConfig, setShowIdConfig] = useState(false);
+  const [idProv, setIdProv] = useState(() => localStorage.getItem('SIANSOR_ID_PROV') || 'IX');
+  const [idKab, setIdKab] = useState(() => localStorage.getItem('SIANSOR_ID_KAB') || '22');
+  const [idKec, setIdKec] = useState(() => localStorage.getItem('SIANSOR_ID_KEC') || '29');
+  const [idAngkatan, setIdAngkatan] = useState(() => localStorage.getItem('SIANSOR_ID_ANGKATAN') || '01');
+  const [idTgl, setIdTgl] = useState(() => {
+    const cached = localStorage.getItem('SIANSOR_ID_TGL');
+    if (cached) return cached;
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${d.getFullYear()}`;
+  });
+
+  // Temporary edit states for explicitly saved configuration
+  const [tempProv, setTempProv] = useState(idProv);
+  const [tempKab, setTempKab] = useState(idKab);
+  const [tempKec, setTempKec] = useState(idKec);
+  const [tempAngkatan, setTempAngkatan] = useState(idAngkatan);
+  const [tempTgl, setTempTgl] = useState(idTgl);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Sync temporary states with active settings when configuration panel is opened/updated
+  React.useEffect(() => {
+    setTempProv(idProv);
+    setTempKab(idKab);
+    setTempKec(idKec);
+    setTempAngkatan(idAngkatan);
+    setTempTgl(idTgl);
+  }, [idProv, idKab, idKec, idAngkatan, idTgl]);
+
+  const handleSaveConfig = () => {
+    setIdProv(tempProv);
+    setIdKab(tempKab);
+    setIdKec(tempKec);
+    setIdAngkatan(tempAngkatan);
+    setIdTgl(tempTgl);
+
+    localStorage.setItem('SIANSOR_ID_PROV', tempProv);
+    localStorage.setItem('SIANSOR_ID_KAB', tempKab);
+    localStorage.setItem('SIANSOR_ID_KEC', tempKec);
+    localStorage.setItem('SIANSOR_ID_ANGKATAN', tempAngkatan);
+    localStorage.setItem('SIANSOR_ID_TGL', tempTgl);
+
+    setSaveSuccess(true);
+    setTimeout(() => {
+      setSaveSuccess(false);
+    }, 2500);
+  };
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,10 +164,8 @@ export default function PesertaTab({
     // Auto-generate or preserve custom ID
     let finalId = formId;
     if (!formId) {
-      const d = new Date();
-      const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${d.getFullYear()}`;
       const prefix = `${peserta.length + 1}`;
-      finalId = `IX-22.29.01.${dateStr}.${String(prefix).padStart(3, '0')}`;
+      finalId = `${idProv.trim().toUpperCase()}-${idKab.trim()}.${idKec.trim()}.${idAngkatan.trim()}.${idTgl.trim()}.${String(prefix).padStart(3, '0')}`;
     }
 
     const prevKader = originalId ? peserta.find(k => k.id === originalId) : peserta.find(k => k.id === formId);
@@ -154,14 +201,137 @@ export default function PesertaTab({
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Kelola data pendaftaran berkas kaderisasi GP Ansor secara tertata.</p>
           </div>
         </div>
-        <button
-          onClick={openAddModal}
-          className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-5 py-3 rounded-xl text-xs flex items-center space-x-2 shadow-xs transition shrink-0 active:scale-[0.98]"
-        >
-          <UserPlus className="w-4 h-4 text-white" />
-          <span>TAMBAH PESERTA</span>
-        </button>
+        
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            type="button"
+            onClick={() => setShowIdConfig(!showIdConfig)}
+            className={`font-extrabold px-4.5 py-3 rounded-xl text-xs flex items-center space-x-2 shadow-xs transition duration-200 active:scale-[0.98] border ${
+              showIdConfig
+                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-navy-850 dark:hover:bg-navy-800 text-slate-800 dark:text-white border-slate-300 dark:border-navy-700'
+                : 'bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-navy-700'
+            }`}
+          >
+            <Settings className="w-4 h-4 text-emerald-500" />
+            <span>KODE KECAMATAN ({idKec})</span>
+          </button>
+          
+          <button
+            onClick={openAddModal}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-5 py-3 rounded-xl text-xs flex items-center space-x-2 shadow-xs transition shrink-0 active:scale-[0.98]"
+          >
+            <UserPlus className="w-4 h-4 text-white" />
+            <span>TAMBAH PESERTA</span>
+          </button>
+        </div>
       </div>
+
+      {/* COLLAPSIBLE ID CARD PATTERN CONFIGURATION */}
+      {showIdConfig && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[20px] border border-emerald-500/30 dark:border-emerald-500/20 shadow-md space-y-4 transition-colors duration-350">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-navy-850">
+            <div className="flex items-center space-x-2">
+              <Settings className="w-4.5 h-4.5 text-emerald-500 animate-spin-slow" />
+              <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800 dark:text-white">Setelan Awal Pola ID Card Peserta</h4>
+            </div>
+            {saveSuccess && (
+              <span className="text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-md animate-pulse">
+                ✓ BERHASIL DISIMPAN!
+              </span>
+            )}
+          </div>
+          
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Sebelum sistem melakukan generate ID Card otomatis, Anda dapat mengonfigurasi format segmentasi di bawah ini agar setiap kecamatan memiliki kode registrasi masing-masing. Tekan tombol <strong>SIMPAN SETELAN</strong> setelah melakukan pembaruan.
+          </p>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest mb-1">1. PROVINSI (DEFAULT: IX)</label>
+              <input
+                type="text"
+                value={tempProv}
+                onChange={(e) => setTempProv(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white font-mono uppercase"
+                placeholder="Contoh: IX"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest mb-1">2. KABUPATEN (DEFAULT: 22)</label>
+              <input
+                type="text"
+                value={tempKab}
+                onChange={(e) => setTempKab(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white font-mono uppercase"
+                placeholder="Contoh: 22"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest mb-1">3. KECAMATAN (KODE UNIK)</label>
+              <input
+                type="text"
+                value={tempKec}
+                onChange={(e) => setTempKec(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white font-mono uppercase focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                placeholder="Contoh: 29"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest mb-1">4. ANGKATAN PKD (DEFAULT: 01)</label>
+              <input
+                type="text"
+                value={tempAngkatan}
+                onChange={(e) => setTempAngkatan(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white font-mono uppercase"
+                placeholder="Contoh: 01"
+              />
+            </div>
+            
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest mb-1">5. TGL KEGIATAN (DDMMYYYY)</label>
+              <input
+                type="text"
+                value={tempTgl}
+                onChange={(e) => setTempTgl(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white font-mono uppercase"
+                placeholder="Contoh: 28062026"
+              />
+            </div>
+          </div>
+          
+          {/* Real-time ID Pattern preview */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200/60 dark:border-navy-850 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest block mb-0.5">PREVIEW ID CARD BERIKUTNYA (UJI COBA POLA)</span>
+              <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 select-all tracking-wider">
+                {tempProv.toUpperCase() || 'IX'}-{tempKab || '22'}.{tempKec || '29'}.{tempAngkatan || '01'}.{tempTgl || 'DDMMYYYY'}.{String(peserta.length + 1).padStart(3, '0')}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleSaveConfig}
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-extrabold px-6 py-2.5 rounded-xl text-xs shadow-xs transition duration-150 transform active:scale-95 flex items-center justify-center space-x-1.5 uppercase tracking-wider"
+              >
+                <span>SIMPAN SETELAN</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Active indicator */}
+          <div className="flex items-center space-x-2 text-[10px] text-slate-450 dark:text-slate-500 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>POLA AKTIF YANG SEDANG DIGUNAKAN SISTEM SAAT INI:</span>
+            <span className="font-mono bg-slate-100 dark:bg-slate-950 px-2 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-bold">
+              {idProv}-{idKab}.{idKec}.{idAngkatan}.{idTgl}.xxx
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Database Spreadsheet card */}
       <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-slate-200/60 dark:border-navy-800 shadow-sm overflow-hidden transition-colors duration-350">

@@ -67,7 +67,7 @@ const DEFAULT_BRANDING: Branding = {
   organisasi: "PC GP ANSOR KABUPATEN BOGOR",
   cabang: "KABUPATEN BOGOR",
   totalSesi: 14,
-  logo: `<svg class="w-11 h-11" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="blueTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0284c7" /><stop offset="50%" stop-color="#0ea5e9" /><stop offset="100%" stop-color="#0d9488" /></linearGradient><linearGradient id="emeraldTeal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" /><stop offset="100%" stop-color="#059669" /></linearGradient><linearGradient id="skyGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#1e3a8a" /><stop offset="100%" stop-color="#0284c7" /></linearGradient></defs><path d="M 20 60 A 40 40 0 0 1 100 60" stroke="url(#skyGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 10" /><path d="M 12 60 C 12 30, 30 12, 60 12 C 90 12, 108 30, 108 60 C 108 80, 95 100, 75 108" stroke="url(#blueTeal)" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 22 75 C 16 65, 18 45, 30 30" stroke="url(#emeraldTeal)" stroke-width="5" stroke-linecap="round" fill="none" /><g stroke="#0d9488" stroke-width="2" opacity="0.6"><line x1="60" y1="20" x2="60" y2="24" /><line x1="60" y1="100" x2="60" y2="96" /><line x1="20" y1="60" x2="24" y2="60" /><line x1="100" y1="60" x2="96" y2="60" /><line x1="32" y1="32" x2="35" y2="35" /><line x1="88" y1="32" x2="85" y2="35" /><line x1="32" y1="88" x2="35" y2="85" /><line x1="88" y1="88" x2="85" y2="85" /></g><path d="M 60 28 C 58 18, 65 10, 75 8 C 70 16, 68 22, 60 28 Z" fill="url(#emeraldTeal)" /><path d="M 58 26 C 54 22, 55 16, 60 12 C 58 18, 58 22, 58 26 Z" fill="url(#blueTeal)" /><circle cx="60" cy="46" r="5" fill="#10b981" /><path d="M 60 51 C 54 53, 50 63, 60 78 C 70 63, 66 53, 60 51 Z" fill="url(#emeraldTeal)" /><path d="M 46 51 C 52 49, 56 50, 60 51 C 64 50, 68 49, 74 51 C 66 58, 54 58, 46 51 Z" fill="url(#blueTeal)" /><circle cx="48" cy="55" r="4.5" fill="#0284c7" /><path d="M 48 59.5 C 42 61, 38 72, 48 83 C 54 72, 52 61, 48 59.5 Z" fill="url(#blueTeal)" /><circle cx="72" cy="55" r="4.5" fill="#0284c7" /><path d="M 72 59.5 C 78 61, 82 72, 72 83 C 66 72, 68 61, 72 59.5 Z" fill="url(#blueTeal)" /><path d="M 35 88 C 45 98, 55 98, 60 98 C 65 98, 75 98, 85 88" stroke="url(#blueTeal)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 42 93 C 50 101, 56 101, 60 101 C 64 101, 70 101, 78 93" stroke="url(#blueTeal)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 48 98 C 53 104, 57 104, 60 104 C 63 104, 67 104, 72 98" stroke="url(#blueTeal)" stroke-width="2" stroke-linecap="round" fill="none" /></svg>`,
+  logo: `<svg class="w-11 h-11" viewBox="0 0 200 215" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ansorGrad" x1="20" y1="180" x2="180" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d8ff8" /><stop offset="40%" stop-color="#06b6d4" /><stop offset="70%" stop-color="#0d9488" /><stop offset="100%" stop-color="#10b981" /></linearGradient></defs><circle cx="100" cy="100" r="85" fill="url(#ansorGrad)" opacity="0.05" /><path d="M 44 146 C 18 114 18 64 54 34 C 80 12 120 12 146 34" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" /><path d="M 33 134 C 10 98 10 48 46 18 C 72 -5 128 -5 154 18" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" opacity="0.7" /><path d="M 146 34 C 172 64 172 114 146 146 C 136 156 122 165 100 168" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" /><g stroke="url(#ansorGrad)" stroke-width="3.5" stroke-linecap="round" opacity="0.9"><line x1="100" y1="95" x2="100" y2="60" /><line x1="100" y1="95" x2="130" y2="65" /><line x1="100" y1="95" x2="140" y2="82" /><line x1="100" y1="95" x2="140" y2="108" /><line x1="100" y1="95" x2="130" y2="125" /><line x1="100" y1="95" x2="70" y2="65" /><line x1="100" y1="95" x2="60" y2="82" /><line x1="100" y1="95" x2="60" y2="108" /><line x1="100" y1="95" x2="70" y2="125" /></g><circle cx="100" cy="95" r="42" stroke="white" stroke-width="3" fill="none" opacity="0.3" /><circle cx="100" cy="78" r="9.5" fill="url(#ansorGrad)" /><circle cx="74" cy="94" r="8" fill="url(#ansorGrad)" /><circle cx="126" cy="94" r="8" fill="url(#ansorGrad)" /><path d="M 100 90 C 96 90, 84 98, 74 104 C 60 112, 50 116, 50 116 C 50 116, 62 110, 74 106 C 86 102, 92 108, 92 118 L 92 142 C 92 148, 88 152, 82 156 C 72 161, 58 162, 58 162 C 58 162, 74 161, 86 156 C 94 152, 100 144, 100 142 C 100 144, 106 152, 114 156 C 126 161, 142 162, 142 162 C 142 162, 128 161, 118 156 C 112 152, 108 148, 108 142 L 108 118 C 108 108, 114 102, 126 106 C 138 110, 150 116, 150 116 C 150 116, 140 112, 126 104 C 116 98, 104 90, 100 90 Z" fill="url(#ansorGrad)" /><path d="M 52 152 C 65 168, 82 173, 100 173 C 118 173, 135 168, 148 152" stroke="url(#ansorGrad)" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M 64 163 C 74 177, 86 181, 100 181 C 114 181, 126 177, 136 163" stroke="url(#ansorGrad)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 76 172 C 83 186, 91 189, 100 189 C 109 189, 117 186, 124 172" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 88 181 C 92 192, 96 194, 100 194 C 104 194, 108 192, 112 181" stroke="url(#ansorGrad)" stroke-width="2" stroke-linecap="round" fill="none" /><g transform="translate(100, 32) scale(0.9)"><path d="M -25 15 C -5 -5, 20 -20, 35 -15 C 20 -5, 10 5, 2 20 C -5 15, -15 12, -25 15 Z" fill="url(#ansorGrad)" /><path d="M 2 20 C 5 10, 18 5, 28 5 C 18 12, 12 20, 10 32 C 6 27, 4 23, 2 20 Z" fill="url(#ansorGrad)" /><path d="M -15 10 C -25 2, -32 -5, -40 2 C -32 8, -25 12, -15 10 Z" fill="url(#ansorGrad)" /></g></svg>`,
   themeColor: "emerald",
   delegationType: "PAC"
 };
@@ -137,7 +137,7 @@ export default function App() {
         if (parsed.activeSesiId) setActiveSesiId(parsed.activeSesiId);
         if (parsed.branding) {
           let b = parsed.branding;
-          if (b && (!b.logo || b.logo.includes('stroke-width="9"') || b.logo.includes('M30 40'))) {
+          if (b && (!b.logo || b.logo.includes('stroke-width="9"') || b.logo.includes('M30 40') || b.logo.includes('viewBox="0 0 120 120"') || b.logo.includes('blueTeal') || b.logo.includes('stop-color="#059669"') || b.logo.includes('goldGrad'))) {
             b = { ...b, logo: DEFAULT_BRANDING.logo };
           }
           setBranding(b);
@@ -530,7 +530,7 @@ export default function App() {
   };
 
   // --- ACTIONS: PRESENSI ---
-  const handleRecordPresence = async (pesertaId: string, statusOverride?: "Tepat Waktu" | "Terlambat") => {
+  const handleRecordPresence = async (pesertaId: string, statusOverride?: "Tepat Waktu" | "Terlambat", skipAlert?: boolean) => {
     const p = peserta.find(k => k.id === pesertaId);
     if (!p) return;
 
@@ -538,7 +538,9 @@ export default function App() {
     const isDouble = presensi.some(pr => pr.id === p.id && pr.sesi === activeSesiId);
 
     if (isDouble) {
-      triggerAlert("Duplikasi Presensi", `${p.nama} sudah tercatat hadir pada Sesi ${activeSesiId}!`, "warning");
+      if (!skipAlert) {
+        triggerAlert("Duplikasi Presensi", `${p.nama} sudah tercatat hadir pada Sesi ${activeSesiId}!`, "warning");
+      }
       return;
     }
 
@@ -576,7 +578,9 @@ export default function App() {
       await syncPresensi(newLogs);
     }
 
-    triggerAlert("Absen Sukses", `${p.nama} tercatat hadir pada Sesi ${activeSesiId} (${finalStatus})`, "success");
+    if (!skipAlert) {
+      triggerAlert("Absen Sukses", `${p.nama} tercatat hadir pada Sesi ${activeSesiId} (${finalStatus})`, "success");
+    }
   };
 
   // --- ACTIONS: EVALUASI ACADEMIS ---

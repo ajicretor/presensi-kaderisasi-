@@ -12,7 +12,9 @@ import {
   UserCheck,
   AlertCircle,
   RefreshCw,
-  Image
+  Image,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Peserta, Sesi, Presensi, Branding } from '../types';
 import jsQR from 'jsqr';
@@ -22,7 +24,7 @@ interface ScanTabProps {
   sesi: Sesi[];
   presensi: Presensi[];
   branding: Branding;
-  onRecordPresence: (pesertaId: string, statusOverride?: "Tepat Waktu" | "Terlambat") => void;
+  onRecordPresence: (pesertaId: string, statusOverride?: "Tepat Waktu" | "Terlambat", skipAlert?: boolean) => void;
   activeSesiId: number;
 }
 
@@ -42,6 +44,12 @@ export default function ScanTab({
   const [manualSelection, setManualSelection] = useState<string>('');
   const [scanFeedback, setScanFeedback] = useState<{ text: string; success: boolean } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [logPage, setLogPage] = useState(1);
+
+  // Reset page when session changes
+  useEffect(() => {
+    setLogPage(1);
+  }, [selectedSesi]);
 
   // Refs for video & canvas
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -77,6 +85,13 @@ export default function ScanTab({
   const lastScannedKader = peserta.find(p => p.id === lastScannedId);
   const lastScannedLog = presentLogs.find(l => l.id === lastScannedId);
 
+  // Pagination for scanned logs
+  const logsPerPage = 10;
+  const totalLogPages = Math.ceil(presentLogs.length / logsPerPage);
+  const indexLastLog = logPage * logsPerPage;
+  const indexFirstLog = indexLastLog - logsPerPage;
+  const paginatedLogs = presentLogs.slice(indexFirstLog, indexLastLog);
+
   // Shared process QR barcode logic
   const handleScannedCode = (scannedId: string) => {
     const now = Date.now();
@@ -88,8 +103,18 @@ export default function ScanTab({
 
     const found = peserta.find(p => p.id === scannedId);
     if (found) {
+      const isDouble = presentLogs.some(log => log.id === scannedId);
+      if (isDouble) {
+        setScanFeedback({
+          text: `DUPLIKASI: ${found.nama.toUpperCase()} SUDAH ABSEN DI SESI INI`,
+          success: false
+        });
+        setTimeout(() => setScanFeedback(null), 3500);
+        return;
+      }
+
       // Record presence inside the system (API / local state helper)
-      onRecordPresence(scannedId);
+      onRecordPresence(scannedId, undefined, true);
       setLastScannedId(scannedId);
       setScanFeedback({
         text: `PRESENSI BERHASIL: ${found.nama.toUpperCase()} (${found.utusan.toUpperCase()})`,
@@ -107,13 +132,25 @@ export default function ScanTab({
 
   // Simulation handler for quick clicks in the database table
   const runSimulatedScan = (id: string, forceLateness?: "Tepat Waktu" | "Terlambat") => {
+    const found = peserta.find(p => p.id === id);
+    if (!found) return;
+
+    const isDouble = presentLogs.some(log => log.id === id);
+    if (isDouble) {
+      setScanFeedback({
+        text: `DUPLIKASI: ${found.nama.toUpperCase()} SUDAH ABSEN DI SESI INI`,
+        success: false
+      });
+      setTimeout(() => setScanFeedback(null), 3500);
+      return;
+    }
+
     setScanFeedback({ text: "Memproses pindaian simulasi...", success: true });
     setTimeout(() => {
-      onRecordPresence(id, forceLateness);
+      onRecordPresence(id, forceLateness, true);
       setLastScannedId(id);
-      const found = peserta.find(p => p.id === id);
       setScanFeedback({
-        text: `SIMULASI BERHASIL: ${found ? found.nama.toUpperCase() : id}`,
+        text: `SIMULASI BERHASIL: ${found.nama.toUpperCase()}`,
         success: true
       });
       setTimeout(() => setScanFeedback(null), 2500);
@@ -619,8 +656,8 @@ export default function ScanTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-navy-850 font-medium text-slate-600 dark:text-slate-300">
-                  {presentLogs.length > 0 ? (
-                    presentLogs.slice(0, 5).map((log, idx) => (
+                  {paginatedLogs.length > 0 ? (
+                    paginatedLogs.map((log, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-navy-950/20 transition-all duration-150">
                         <td className="py-3 font-bold text-slate-800 dark:text-white">
                           <div>
@@ -656,6 +693,50 @@ export default function ScanTab({
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalLogPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-navy-850 gap-3">
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Menampilkan {indexFirstLog + 1} - {Math.min(indexLastLog, presentLogs.length)} Dari {presentLogs.length} Pindaian
+                </span>
+                
+                <div className="flex items-center space-x-1">
+                  <button
+                    type="button"
+                    disabled={logPage === 1}
+                    onClick={() => setLogPage(prev => Math.max(prev - 1, 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-navy-800 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-900 disabled:opacity-40 transition-colors duration-150"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  
+                  {Array.from({ length: totalLogPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setLogPage(pageNum)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all duration-150 ${
+                        logPage === pageNum
+                          ? 'bg-emerald-500 text-white shadow-xs'
+                          : 'border border-slate-200 dark:border-navy-800 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-900'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    disabled={logPage === totalLogPages}
+                    onClick={() => setLogPage(prev => Math.min(prev + 1, totalLogPages))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-navy-800 text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-900 disabled:opacity-40 transition-colors duration-150"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

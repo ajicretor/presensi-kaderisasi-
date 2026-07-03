@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Lock, KeyRound, ShieldAlert } from 'lucide-react';
 import { Tim, Branding } from '../types';
 import { getSupabaseClient } from '../supabase';
+import { generateAnsorLogoPng } from '../utils/logoGenerator';
 
 interface LoginScreenProps {
   tim: Tim[];
@@ -14,6 +15,8 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const logoPng = React.useMemo(() => generateAnsorLogoPng(), []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,12 +132,10 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
 
           {/* Pusat Logo & Judul */}
           <div className="relative z-10 flex flex-col items-center justify-center py-10 md:py-0 my-auto text-center">
-            <div className="bg-white/10 backdrop-blur-md p-5 rounded-[24px] border border-white/15 shadow-xl mb-6 flex items-center justify-center">
-              {branding && branding.logo && (typeof branding.logo === 'string') && (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) ? (
-                <div dangerouslySetInnerHTML={{ __html: branding.logo }} className="w-16 h-16 flex items-center justify-center scale-150 text-white" />
-              ) : branding && branding.logo ? (
-                <img src={branding.logo} alt="Logo" className="w-24 h-24 object-contain rounded-2xl" referrerPolicy="no-referrer" />
-              ) : null}
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-[32px] border border-white/15 shadow-xl mb-6 flex items-center justify-center">
+              <div className="bg-white p-3 rounded-[24px] shadow-lg flex items-center justify-center w-24 h-24 select-none shrink-0 overflow-hidden">
+                <img src={logoPng} alt="Logo" className="w-full h-full object-contain rounded-xl select-none pointer-events-none" referrerPolicy="no-referrer" />
+              </div>
             </div>
             <h2 className="text-2xl font-black uppercase tracking-widest text-white leading-none">{branding.appName}</h2>
             <p className="text-[10px] text-white/80 font-bold uppercase tracking-widest mt-2">{branding.organisasi}</p>

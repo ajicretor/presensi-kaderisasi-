@@ -39,6 +39,10 @@ export default function KelulusanTab({
   currentUserPermissions,
   currentUserName
 }: KelulusanTabProps) {
+  // Calculates total session duration
+  const sortedSesi = [...sesi].sort((a,b) => a.num - b.num);
+  const totalDuration = sortedSesi.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
+
   const [search, setSearch] = useState('');
 
   // Pagination state
@@ -48,6 +52,11 @@ export default function KelulusanTab({
   // AI thresholds State
   const [minPres, setMinPres] = useState<number>(75);
   const [minMenit, setMinMenit] = useState<number>(877.5);
+  const [isAiEvaluated, setIsAiEvaluated] = useState(() => {
+    return localStorage.getItem('SIANSOR_AI_EVALUATED') === 'true';
+  });
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evalProgress, setEvalProgress] = useState(0);
 
   // Modal Input Evaluasi State
   const [isEvalOpen, setIsEvalOpen] = useState(false);
@@ -73,14 +82,37 @@ export default function KelulusanTab({
   const [certBody1, setCertBody1] = useState('');
   const [certBody2, setCertBody2] = useState('');
   const [certBody3, setCertBody3] = useState('');
-  const [certKetua, setCertKetua] = useState('DOMIRI A GHAZALY., S.H');
+  const [certKetua, setCertKetua] = useState('DHOMIRY A GHAZALY., S.H');
   const [certSekretaris, setCertSekretaris] = useState('M. ANGGA GUNAEFI., S.Pd');
+  const [certLocationHijriah, setCertLocationHijriah] = useState('CILEUNGSI , 13 MUHARRAM 1448 H');
+  const [certDateMasehi, setCertDateMasehi] = useState('28 JUNI 2026 M');
+  const [certSiapsData, setCertSiapsData] = useState('');
   
   // Custom uploaded images for Certificate
   const [customLogo, setCustomLogo] = useState<string | null>(null);
   const [customStempel, setCustomStempel] = useState<string | null>(null);
   const [customTtdKetua, setCustomTtdKetua] = useState<string | null>(null);
   const [customTtdSekr, setCustomTtdSekr] = useState<string | null>(null);
+
+  // States for Back Side of Certificate (Daftar Materi)
+  const [certActivePage, setCertActivePage] = useState<'depan' | 'belakang'>('depan');
+  const [certTtl, setCertTtl] = useState('BOGOR, 03/03/1997');
+  const [certJabatan, setCertJabatan] = useState('KADER');
+  const [certInstruktur, setCertInstruktur] = useState('SEPTA AJI., S.KOM');
+  const [certFoto, setCertFoto] = useState<string | null>(null);
+  const [certSubjects, setCertSubjects] = useState([
+    { no: "1", materi: "Orientasi Pengkaderan", narasumber: "M. Angga Gunaefi., S.Pd" },
+    { no: "2", materi: "Ahlussunah Wal jama'ah I", narasumber: "KH. Abduloh Nawawi MDZ., S.Pd" },
+    { no: "3", materi: "Dalil-Dalil Amaliyah dan Tradisi Keagamaan NU", narasumber: "Kyai Maman Djamaludin, M.Pd" },
+    { no: "4", materi: "Ke-Indonesiaan dan Kebangsaan", narasumber: "Zulfikar., S.Pd" },
+    { no: "5", materi: "Ke-Nahdlatul Ulama-an I", narasumber: "Kyai Syahri Ramdani" },
+    { no: "6", materi: "Ke Ansoran I", narasumber: "Dhomiry A Ghazaly., S.H" },
+    { no: "7", materi: "Organisasi dan Kepemimpinan", narasumber: "Rachman Nugeraha., M.H" },
+    { no: "8", materi: "Pengenalan Peraturan Organisasi GP Ansor", narasumber: "Septa Aji., S.Kom" },
+    { no: "9", materi: "Literasi Digital", narasumber: "Septa Aji., S.Kom" },
+    { no: "10", materi: "Rencana Tindak Lanjut ( RTL )", narasumber: "Hamdani Maulana Malik., S.E" },
+    { no: "11", materi: "Pembaiatan", narasumber: "Instruktur" }
+  ]);
 
   // Modal SK Penetapan Kelulusan State
   const [isSkOpen, setIsSkOpen] = useState(false);
@@ -132,6 +164,30 @@ export default function KelulusanTab({
     if (n < 1000) return kekata(Math.floor(n / 100)) + " Ratus" + (n % 100 !== 0 ? " " + kekata(n % 100) : "");
     return String(n);
   }
+
+  useEffect(() => {
+    if (isEvalOpen && evalId) {
+      const currentParticipant = peserta.find(p => p.id === evalId);
+      if (currentParticipant) {
+        const presentLogs = presensi.filter(pr => pr.id === currentParticipant.id);
+        const attendedMinutes = presentLogs.reduce((sum, log) => {
+          const matchingS = sesi.find(s => s.num === log.sesi);
+          return sum + (matchingS?.duration || 0);
+        }, 0);
+        const pct = Math.round((attendedMinutes / totalDuration) * 100) || 0;
+
+        let autoStatus: "LULUS" | "LULUS BERSYARAT" | "TIDAK LULUS" = "TIDAK LULUS";
+        if (pct < 75) {
+          autoStatus = "TIDAK LULUS";
+        } else if (pct === 75) {
+          autoStatus = "LULUS BERSYARAT";
+        } else {
+          autoStatus = "LULUS";
+        }
+        setEvalStatus(autoStatus);
+      }
+    }
+  }, [isEvalOpen, evalId, peserta, presensi, sesi, totalDuration]);
 
   useEffect(() => {
     if (isSkOpen) {
@@ -214,10 +270,6 @@ export default function KelulusanTab({
   const isAdmin = currentUserRole === 'Admin';
   const canRekap = isAdmin || currentUserPermissions.includes('rekap');
 
-  // Calculates total session duration
-  const sortedSesi = [...sesi].sort((a,b) => a.num - b.num);
-  const totalDuration = sortedSesi.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
-
   // Sync count indicators
   const countLulus = peserta.filter(p => p.status_kelulusan === 'LULUS').length;
   const countBersyarat = peserta.filter(p => p.status_kelulusan === 'LULUS BERSYARAT').length;
@@ -256,43 +308,10 @@ export default function KelulusanTab({
 
   // Perform AI Evaluation
   const runAiEvaluation = () => {
-    // 1. Train dataset parameters on fly (using latest state)
-    // Class distribution model
-    const classes: ("LULUS" | "LULUS BERSYARAT" | "TIDAK LULUS")[] = ["LULUS", "LULUS BERSYARAT", "TIDAK LULUS"];
-    let priors: Record<string, number> = { "LULUS": 0.33, "LULUS BERSYARAT": 0.33, "TIDAK LULUS": 0.33 };
-    let likelihoods: Record<string, Record<string, Record<string, number>>> = {
-      presensi: {}, postTest: {}, praktik: {}, keaktifan: {}
-    };
+    setIsEvaluating(true);
+    setEvalProgress(0);
 
-    classes.forEach(c => {
-      likelihoods.presensi[c] = { "SANGAT_TINGGI": 1, "TINGGI": 1, "CUKUP": 1, "RENDAH": 1 };
-      likelihoods.postTest[c] = { "SANGAT_BAIK": 1, "BAIK": 1, "CUKUP": 1, "KURANG": 1 };
-      likelihoods.praktik[c] = { "SANGAT_BAIK": 1, "BAIK": 1, "CUKUP": 1, "KURANG": 1 };
-      likelihoods.keaktifan[c] = { "SANGAT_BAIK": 1, "BAIK": 1, "CUKUP": 1, "KURANG": 1 };
-    });
-
-    // Populate data
-    peserta.forEach(p => {
-      const status = p.status_kelulusan || "TIDAK LULUS";
-      const presentLogs = presensi.filter(pr => pr.id === p.id);
-      const attendedMinutes = presentLogs.reduce((sum, log) => {
-        const matchingS = sesi.find(s => s.num === log.sesi);
-        return sum + (matchingS?.duration || 0);
-      }, 0);
-      const presPct = Math.round((attendedMinutes / totalDuration) * 100) || 0;
-
-      let pCat = quantizePresence(presPct);
-      let postCat = quantizeScore(p.nilai_post_test || 0);
-      let praktikCat = quantizeScore(p.nilai_praktik || 0);
-      let aktifCat = quantizeScore(p.nilai_keaktifan || 0);
-
-      if (likelihoods.presensi[status]) likelihoods.presensi[status][pCat]++;
-      if (likelihoods.postTest[status]) likelihoods.postTest[status][postCat]++;
-      if (likelihoods.praktik[status]) likelihoods.praktik[status][praktikCat]++;
-      if (likelihoods.keaktifan[status]) likelihoods.keaktifan[status][aktifCat]++;
-    });
-
-    // Predict for all kaders and bundle updates
+    // Predict for all kaders and bundle updates based on the exact percentage criteria
     const updatedPesertaList = peserta.map((p, index) => {
       const presentLogs = presensi.filter(pr => pr.id === p.id);
       const attendedMinutes = presentLogs.reduce((sum, log) => {
@@ -303,35 +322,12 @@ export default function KelulusanTab({
 
       let prediction: "LULUS" | "LULUS BERSYARAT" | "TIDAK LULUS" = "TIDAK LULUS";
 
-      // 1. C4.5 Decision Step 1: Lateness and overall absence criteria
-      if (presPct < minPres) {
+      if (presPct < 75) {
         prediction = "TIDAK LULUS";
-      } else if (presPct >= minPres && attendedMinutes >= minMenit && p.nilai_post_test >= 75 && p.nilai_praktik >= 75 && p.nilai_keaktifan >= 75) {
-        prediction = "LULUS";
-      } else {
-        // Bayes Posterior probability
-        let bestProb = -1;
-        let pCat = quantizePresence(presPct);
-        let postCat = quantizeScore(p.nilai_post_test || 0);
-        let praktikCat = quantizeScore(p.nilai_praktik || 0);
-        let aktifCat = quantizeScore(p.nilai_keaktifan || 0);
-
-        classes.forEach(c => {
-          let prob = priors[c] *
-            (likelihoods.presensi[c][pCat] || 0.01) *
-            (likelihoods.postTest[c][postCat] || 0.01) *
-            (likelihoods.praktik[c][praktikCat] || 0.01) *
-            (likelihoods.keaktifan[c][aktifCat] || 0.01);
-          if (prob > bestProb) {
-            bestProb = prob;
-            prediction = c;
-          }
-        });
-      }
-
-      // Safeguard downgrade
-      if (prediction === 'LULUS' && attendedMinutes < minMenit) {
+      } else if (presPct === 75) {
         prediction = "LULUS BERSYARAT";
+      } else {
+        prediction = "LULUS";
       }
 
       const certNo = prediction === 'LULUS' && !p.no_sertifikat
@@ -345,7 +341,22 @@ export default function KelulusanTab({
       };
     });
 
-    onBulkUpdateKelulusan(updatedPesertaList);
+    let current = 0;
+    const interval = setInterval(() => {
+      // realistic increments for algorithmic computation feel
+      current += Math.floor(Math.random() * 3) + 2; 
+      if (current >= 100) {
+        current = 100;
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsAiEvaluated(true);
+          localStorage.setItem('SIANSOR_AI_EVALUATED', 'true');
+          onBulkUpdateKelulusan(updatedPesertaList);
+          setIsEvaluating(false);
+        }, 500);
+      }
+      setEvalProgress(current);
+    }, 35);
   };
 
   const handleOpenEval = (p: Peserta) => {
@@ -404,9 +415,9 @@ export default function KelulusanTab({
       utusan: p.utusan,
       pct: presPct,
       minutes: attendedMinutes,
-      treePresence: `Kehadiran (${presPct}%) < Batas AI (${minPres}%)? ${presPct < minPres ? 'YA (TIDAK LULUS)' : 'TIDAK'}`,
-      treeScores: `Durasi Kelas (${attendedMinutes}m) >= Syarat (${minMenit}m) & Rata-rata akad >= 75? ${
-        (attendedMinutes >= minMenit && p.nilai_post_test >= 75 && p.nilai_praktik >= 75 && p.nilai_keaktifan >= 75) ? 'YA (LULUS MUTLAK)' : 'TIDAK (LALU EVALUASI BAYES)'
+      treePresence: `Kehadiran (${presPct}%) < Batas Lulus (75%)? ${presPct < 75 ? 'YA (TIDAK LULUS)' : 'TIDAK'}`,
+      treeScores: `Persentase Kehadiran (${presPct}%) === 75%? ${
+        presPct === 75 ? 'YA (LULUS BERSYARAT)' : (presPct > 75 ? 'TIDAK (LULUS)' : 'TIDAK (TIDAK LULUS)')
       }`,
       probs
     });
@@ -416,12 +427,25 @@ export default function KelulusanTab({
   // ----------------- Certificate live preview drawing on Canvas -----------------
   const handleOpenCertificateCustomizer = (p: Peserta) => {
     setCertId(p.id);
-    setCertNomor(p.no_sertifikat || "CERT/ANS-PC/XXVIII/001/2026");
+    setCertNomor(p.no_sertifikat || "06.020 / PC-IX-22/SK-01/PKD-XXIX/VI/2026");
     setCertNama(p.nama);
     setCertUtusan(p.utusan);
-    setCertBody1("TELAH MENYELESAIKAN PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN XXVIII PIMPINAN CABANG");
-    setCertBody2("GERAKAN PEMUDA ANSOR KABUPATEN BOGOR PADA TANGGAL 13 - 15 JUNI 2026 BERTEMPAT");
-    setCertBody3("DI PONDOK PESANTREN AL-FALAH DESA SUSUKAN KABUPATEN BOGOR");
+    setCertBody1("TELAH MENYELESAIKAN PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN XXIX PIMPINAN CABANG");
+    setCertBody2("GERAKAN PEMUDA ANSOR KABUPATEN BOGOR PADA TANGGAL 26 - 28 JUNI 2026 BERTEMPAT");
+    setCertBody3("DI SDIT NURUL AKBAR DESA GANDOANG KECAMATAN CILEUNGSI KABUPATEN BOGOR");
+    setCertKetua("DHOMIRY A GHAZALY., S.H");
+    setCertSekretaris("M. ANGGA GUNAEFI., S.Pd");
+    setCertLocationHijriah("CILEUNGSI , 13 MUHARRAM 1448 H");
+    setCertDateMasehi("28 JUNI 2026 M");
+    setCertSiapsData(`https://siaps.ansorbogor.or.id/verify/${p.id}`);
+    
+    // Back Side state variables
+    setCertActivePage('depan');
+    setCertTtl("BOGOR, 03/03/1997");
+    setCertJabatan("KADER");
+    setCertInstruktur("SEPTA AJI., S.KOM");
+    setCertFoto(p.foto || null);
+    
     setIsCertOpen(true);
   };
 
@@ -439,43 +463,76 @@ export default function KelulusanTab({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 1200, 850);
 
-    // Decorative background layout pattern
-    ctx.strokeStyle = '#059669';
+    // Decorative background: Islamic geometric arabesque watermark pattern
+    ctx.save();
+    ctx.strokeStyle = 'rgba(5, 150, 105, 0.04)'; // Soft green watermark
     ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.02;
-    for (let x = 100; x < 1200; x += 150) {
-      for (let y = 100; y < 850; y += 150) {
+    const patSize = 48;
+    const patStep = 100;
+    for (let x = 0; x < 1200 + patStep; x += patStep) {
+      for (let y = 0; y < 850 + patStep; y += patStep) {
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // Overlapping squares rotated by 45 degrees to form an 8-pointed star
         ctx.beginPath();
-        ctx.arc(x, y, 60, 0, Math.PI * 2);
+        ctx.rect(-patSize/2, -patSize/2, patSize, patSize);
         ctx.stroke();
+        
+        ctx.rotate(Math.PI / 4);
+        ctx.beginPath();
+        ctx.rect(-patSize/2, -patSize/2, patSize, patSize);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, patSize / 4, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.restore();
       }
     }
-    ctx.globalAlpha = 1.0;
+    ctx.restore();
 
     // Premium Border Frames
-    ctx.strokeStyle = '#059669';
+    // Outer green border
+    ctx.strokeStyle = '#005a36'; // Elegant Dark Green
     ctx.lineWidth = 4;
-    ctx.strokeRect(30, 30, 1140, 790);
+    ctx.strokeRect(20, 20, 1160, 810);
 
+    // Inner thin gold/amber border
     ctx.strokeStyle = '#d97706';
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(40, 40, 1120, 770);
+    ctx.strokeRect(30, 30, 1140, 790);
 
-    // Green corner anchors
-    ctx.fillStyle = '#059669';
-    ctx.fillRect(20, 20, 30, 30);
-    ctx.fillRect(1150, 20, 30, 30);
-    ctx.fillRect(20, 800, 30, 30);
-    ctx.fillRect(1150, 800, 30, 30);
+    // Middle elegant green border
+    ctx.strokeStyle = '#005a36';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(38, 38, 1124, 774);
 
-    // Load logo if uploaded, otherwise draw dynamic vector shield GP Ansor
+    // Corner decorative lines
+    ctx.fillStyle = '#005a36';
+    // Top-left
+    ctx.fillRect(15, 15, 30, 8);
+    ctx.fillRect(15, 15, 8, 30);
+    // Top-right
+    ctx.fillRect(1155, 15, 30, 8);
+    ctx.fillRect(1177, 15, 8, 30);
+    // Bottom-left
+    ctx.fillRect(15, 827, 30, 8);
+    ctx.fillRect(15, 805, 8, 30);
+    // Bottom-right
+    ctx.fillRect(1155, 827, 30, 8);
+    ctx.fillRect(1177, 805, 8, 30);
+
+    if (certActivePage === 'depan') {
+      // Load logo if uploaded, otherwise draw dynamic vector shield GP Ansor
     const logoToUse = customLogo || (branding?.logo && branding.logo.trim().startsWith('data:image/') ? branding.logo : null);
     if (logoToUse) {
       const img = new Image();
       img.src = logoToUse;
       await new Promise((resolve) => {
         img.onload = () => {
-          ctx.drawImage(img, 545, 80, 110, 110);
+          ctx.drawImage(img, 550, 65, 100, 100);
           resolve(true);
         };
         img.onerror = () => {
@@ -483,152 +540,375 @@ export default function KelulusanTab({
         };
       });
     } else {
-      // Dynamic beautiful vector logo rendering
+      // Draw professional GP Ansor triangle logo
       ctx.save();
-      ctx.translate(600, 135);
-      ctx.scale(1.1, 1.1);
-      ctx.translate(-60, -60);
-      ctx.strokeStyle = "#1E70CD";
-      ctx.lineWidth = 9;
+      ctx.translate(600, 115);
+      
+      const logoGreen = '#005a36';
+      const logoSize = 100;
+      
+      // Draw outer triangle
+      ctx.strokeStyle = logoGreen;
+      ctx.lineWidth = 5;
+      ctx.lineJoin = 'round';
       ctx.beginPath();
-      ctx.moveTo(30, 40);
-      ctx.bezierCurveTo(30, 40, 55, 35, 60, 35);
-      ctx.bezierCurveTo(65, 35, 90, 40, 90, 40);
-      ctx.bezierCurveTo(90, 40, 93, 72, 60, 92);
-      ctx.bezierCurveTo(27, 72, 30, 40, 30, 40);
+      ctx.moveTo(0, -logoSize/2);
+      ctx.lineTo(logoSize * 0.58, logoSize * 0.45);
+      ctx.lineTo(-logoSize * 0.58, logoSize * 0.45);
       ctx.closePath();
       ctx.stroke();
 
-      ctx.lineWidth = 10;
+      // Draw inner thin triangle
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(42, 55);
-      ctx.lineTo(58, 71);
-      ctx.lineTo(86, 43);
+      ctx.moveTo(0, -logoSize/2 + 8);
+      ctx.lineTo(logoSize * 0.58 - 10, logoSize * 0.45 - 5);
+      ctx.lineTo(-logoSize * 0.58 + 10, logoSize * 0.45 - 5);
+      ctx.closePath();
       ctx.stroke();
 
-      ctx.strokeStyle = "#4FAF3C";
+      // Triangle fill
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(51, 64);
-      ctx.lineTo(58, 71);
-      ctx.lineTo(66, 63);
-      ctx.stroke();
+      ctx.moveTo(0, -logoSize/2 + 3);
+      ctx.lineTo(logoSize * 0.58 - 3, logoSize * 0.45 - 2);
+      ctx.lineTo(-logoSize * 0.58 + 3, logoSize * 0.45 - 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Crescent moon in the middle
+      ctx.fillStyle = logoGreen;
+      ctx.beginPath();
+      ctx.arc(0, 4, 18, -Math.PI * 0.6, Math.PI * 0.8, false);
+      ctx.arc(4, 2, 16, Math.PI * 0.8, -Math.PI * 0.6, true);
+      ctx.closePath();
+      ctx.fill();
+
+      // Helper for drawing 5-point star
+      const drawStarVec = (sx: number, sy: number, r: number) => {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.beginPath();
+        ctx.rotate(-Math.PI / 2);
+        for (let i = 0; i < 10; i++) {
+          const radius = (i % 2 === 0) ? r : r / 2.3;
+          const angle = (Math.PI * i) / 5;
+          ctx.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+
+      // 9 Stars
+      // Top central star
+      drawStarVec(0, -16, 7);
+
+      // Left 4 stars
+      drawStarVec(-14, -8, 3.2);
+      drawStarVec(-22, 1, 3.2);
+      drawStarVec(-24, 11, 3.2);
+      drawStarVec(-18, 20, 3.2);
+
+      // Right 4 stars
+      drawStarVec(14, -8, 3.2);
+      drawStarVec(22, 1, 3.2);
+      drawStarVec(24, 11, 3.2);
+      drawStarVec(18, 20, 3.2);
+
+      // Rays shining from top star
+      ctx.strokeStyle = logoGreen;
+      ctx.lineWidth = 1.2;
+      for (let angle = -Math.PI * 0.8; angle <= -Math.PI * 0.2; angle += Math.PI * 0.15) {
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * 10, -16 + Math.sin(angle) * 10);
+        ctx.lineTo(Math.cos(angle) * 17, -16 + Math.sin(angle) * 17);
+        ctx.stroke();
+      }
+
+      // Banner for ANSOR
+      ctx.fillStyle = logoGreen;
+      ctx.fillRect(-35, 23, 70, 13);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = "bold 8.5px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("ANSOR", 0, 29.5);
+
       ctx.restore();
     }
 
-    // Calligraphy font placeholder or serif fallback
+    // Elegant Calligraphy / Serif Font for Title
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#1e293b';
-    ctx.font = "italic bold 64px serif";
-    ctx.fillText("Sertifikat_Kaderisasi", 600, 260);
+    ctx.fillStyle = '#005a36'; // Elegant green
+    ctx.font = "italic 68px 'Playfair Display', 'Georgia', 'Didot', serif";
+    ctx.fillText("Sertifikat", 600, 260);
 
     // Certificate Number
-    ctx.font = "bold 13px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillStyle = '#475569';
-    ctx.fillText(`NOMOR REGISTER : ${certNomor}`, 600, 305);
+    ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = '#334155';
+    ctx.fillText(`NOMOR : ${certNomor}`, 600, 305);
 
     // Given To
-    ctx.fillStyle = '#64748b';
-    ctx.font = "extrabold 11px sans-serif";
+    ctx.fillStyle = '#475569';
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
     ctx.fillText("DIBERIKAN KEPADA :", 600, 345);
 
-    // Participant Name (Big!)
-    ctx.fillStyle = '#059669';
-    ctx.font = "black 36px 'Plus Jakarta Sans', sans-serif";
+    // Participant Name (Big, bold green, elegant italic serif)
+    ctx.fillStyle = '#005a36';
+    ctx.font = "bold italic 44px 'Playfair Display', 'Georgia', serif";
     ctx.fillText(certNama.toUpperCase(), 600, 400);
 
-    // Separator line
-    ctx.strokeStyle = '#d97706';
+    // Underline
+    ctx.strokeStyle = '#d97706'; // Gold/amber line
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(400, 415);
-    ctx.lineTo(800, 415);
+    ctx.moveTo(380, 411);
+    ctx.lineTo(820, 411);
     ctx.stroke();
 
     // Body texts
     ctx.fillStyle = '#334155';
-    ctx.font = "500 13px sans-serif";
-    ctx.fillText(certBody1.toUpperCase(), 600, 460);
-    ctx.fillText(certBody2.toUpperCase(), 600, 485);
-    ctx.fillText(certBody3.toUpperCase(), 600, 510);
-    ctx.font = "extrabold 15px sans-serif";
+    ctx.font = "500 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(certBody1.toUpperCase(), 600, 455);
+    ctx.fillText(certBody2.toUpperCase(), 600, 480);
+    ctx.fillText(certBody3.toUpperCase(), 600, 505);
+    
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
     ctx.fillStyle = '#0f172a';
-    ctx.fillText("DAN DINYATAKAN LULUS SEBAGAI ANGGOTA KADER GP ANSOR", 600, 545);
+    ctx.fillText("DAN DINYATAKAN LULUS", 600, 540);
 
-    // Date/Time
+    // Location & Date
     ctx.fillStyle = '#1e293b';
-    ctx.font = "extrabold 12px sans-serif";
-    ctx.fillText("BOGOR, 15 JUNI 2026 M", 600, 595);
+    ctx.font = "500 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(certLocationHijriah.toUpperCase(), 600, 580);
+    
+    // Line under location & Hijriah date
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(480, 587);
+    ctx.lineTo(720, 587);
+    ctx.stroke();
 
-    // Chairman & Secretary titles
+    ctx.fillText(certDateMasehi.toUpperCase(), 600, 605);
+
+    // PIMPINAN CABANG GERAKAN PEMUDA ANSOR KABUPATEN BOGOR Headers
     ctx.fillStyle = '#0f172a';
-    ctx.font = "extrabold 14px sans-serif";
-    ctx.fillText(certKetua, 350, 735);
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillStyle = '#64748b';
-    ctx.fillText("KETUA CABANG", 350, 755);
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText("PIMPINAN CABANG", 600, 640);
+    ctx.fillText("GERAKAN PEMUDA ANSOR", 600, 657);
+    ctx.fillText("KABUPATEN BOGOR", 600, 674);
+
+    // Chairman & Secretary names and roles
+    ctx.fillStyle = '#0f172a';
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(certKetua, 350, 765);
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = '#475569';
+    ctx.fillText("KETUA", 350, 785);
 
     ctx.fillStyle = '#0f172a';
-    ctx.font = "extrabold 14px sans-serif";
-    ctx.fillText(certSekretaris, 810, 735);
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillStyle = '#64748b';
-    ctx.fillText("SEKRETARIS CABANG", 810, 755);
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(certSekretaris, 810, 765);
+    ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = '#475569';
+    ctx.fillText("SEKRETARIS", 810, 785);
 
-    // TTDs rendering
-    if (customTtdKetua) {
-      const img = new Image();
-      img.src = customTtdKetua;
-      await new Promise(r => { img.onload = () => { ctx.drawImage(img, 260, 640, 180, 75); r(true); } });
-    } else {
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(300, 700);
-      ctx.bezierCurveTo(320, 670, 310, 710, 350, 665);
-      ctx.stroke();
-    }
-
-    if (customTtdSekr) {
-      const img = new Image();
-      img.src = customTtdSekr;
-      await new Promise(r => { img.onload = () => { ctx.drawImage(img, 720, 640, 180, 75); r(true); } });
-    } else {
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(760, 695);
-      ctx.bezierCurveTo(780, 660, 810, 690, 830, 670);
-      ctx.stroke();
-    }
-
-    // Wet Seal Stamp Rendering
-    if (customStempel) {
-      const img = new Image();
-      img.src = customStempel;
-      await new Promise(r => { img.onload = () => { ctx.drawImage(img, 450, 630, 110, 110); r(true); } });
-    } else {
-      // Draw lovely stamp outline
-      ctx.save();
-      ctx.translate(500, 695);
-      ctx.strokeStyle = 'rgba(79, 70, 229, 0.4)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.stroke();
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(0, 0, 44, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(79, 70, 229, 0.4)';
-      ctx.font = 'bold 8px sans-serif';
-      ctx.fillText("STEMPEL BASAH", -32, 3);
-      ctx.restore();
-    }
-
-    // QR Code generation automatically rendered onto canvas via standard qrcode library
+    // Digital Signature QR Code for Ketua (Left)
     try {
-      const qrDataUrl = await QRCode.toDataURL(certId, { margin: 1, width: 110 });
+      const ketuaQrText = `VERIFIKASI TANDA TANGAN DIGITAL\nPimpinan Cabang GP Ansor Kabupaten Bogor\nNama: ${certKetua}\nJabatan: KETUA\nSertifikat No: ${certNomor}\nStatus: TERVERIFIKASI & SAH`;
+      const ketuaQrUrl = await QRCode.toDataURL(ketuaQrText, { margin: 1, width: 70 });
       const qrImg = new Image();
-      qrImg.src = qrDataUrl;
-      await new Promise(r => { qrImg.onload = () => { ctx.drawImage(qrImg, 1020, 630, 110, 110); r(true); } });
+      qrImg.src = ketuaQrUrl;
+      await new Promise(r => { qrImg.onload = () => { ctx.drawImage(qrImg, 315, 650, 70, 70); r(true); } });
     } catch (e) {
       console.error(e);
+    }
+
+    // Digital Signature QR Code for Secretary (Right)
+    try {
+      const sekQrText = `VERIFIKASI TANDA TANGAN DIGITAL\nPimpinan Cabang GP Ansor Kabupaten Bogor\nNama: ${certSekretaris}\nJabatan: SEKRETARIS\nSertifikat No: ${certNomor}\nStatus: TERVERIFIKASI & SAH`;
+      const sekQrUrl = await QRCode.toDataURL(sekQrText, { margin: 1, width: 70 });
+      const qrImg = new Image();
+      qrImg.src = sekQrUrl;
+      await new Promise(r => { qrImg.onload = () => { ctx.drawImage(qrImg, 775, 650, 70, 70); r(true); } });
+    } catch (e) {
+      console.error(e);
+    }
+
+    // SIAPs QR Code (Bottom Right)
+    try {
+      const qrDataUrl = await QRCode.toDataURL(certSiapsData || certId, { margin: 1, width: 105 });
+      const qrImg = new Image();
+      qrImg.src = qrDataUrl;
+      await new Promise(r => { qrImg.onload = () => { ctx.drawImage(qrImg, 1040, 670, 105, 105); r(true); } });
+      
+      // Label under QR Code
+      ctx.fillStyle = '#475569';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText("APLIKASI SIAPs", 1092, 792);
+    } catch (e) {
+      console.error(e);
+    }
+    } else {
+      // ----------------- DRAW BACK SIDE (HALAMAN BELAKANG & DAFTAR MATERI) -----------------
+      // Draw light background container for Bio & Photo
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.7)';
+      ctx.fillRect(60, 50, 1080, 200);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(60, 50, 1080, 200);
+
+      // Photo Frame
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillRect(80, 60, 140, 180);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(80, 60, 140, 180);
+
+      if (certFoto) {
+        const img = new Image();
+        img.src = certFoto;
+        await new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 82, 62, 136, 176);
+            resolve(true);
+          };
+          img.onerror = () => {
+            resolve(false);
+          };
+        });
+      } else {
+        // Placeholder text
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillText("PAS FOTO", 150, 140);
+        ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillText("3 x 4", 150, 165);
+      }
+
+      // Draw Bio text
+      ctx.textAlign = 'left';
+      const bioLeft = 260;
+      
+      // Labels
+      ctx.fillStyle = '#475569';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText("NAMA", bioLeft, 100);
+      ctx.fillText("TTL", bioLeft, 138);
+      ctx.fillText("UTUSAN", bioLeft, 176);
+      ctx.fillText("JABATAN", bioLeft, 214);
+
+      // Values
+      ctx.fillStyle = '#0f172a';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText(`:   ${certNama.toUpperCase()}`, bioLeft + 110, 100);
+      ctx.fillText(`:   ${certTtl.toUpperCase()}`, bioLeft + 110, 138);
+      ctx.fillText(`:   ${certUtusan.toUpperCase()}`, bioLeft + 110, 176);
+      ctx.fillText(`:   ${certJabatan.toUpperCase()}`, bioLeft + 110, 214);
+
+      // subjects (Materi) data array - now using state certSubjects
+      const subjects = certSubjects;
+
+      // Draw Table Bounding Box & Grid Lines
+      const tableY = 270;
+      const colNoW = 70;
+      const colMatW = 550;
+      const colNarW = 460;
+      const rowH = 34;
+      const tableW = colNoW + colMatW + colNarW; // 1080px
+      const totalTableH = rowH * 12; // 1 header + 11 rows = 408px
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(60, tableY, tableW, totalTableH);
+
+      // Header background
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(60, tableY, tableW, rowH);
+
+      // Header Texts
+      ctx.fillStyle = '#0f172a';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = 'center';
+      
+      ctx.fillText("NO", 60 + colNoW / 2, tableY + rowH / 2 + 5);
+      ctx.fillText("MATERI", 60 + colNoW + colMatW / 2, tableY + rowH / 2 + 5);
+      ctx.fillText("NARASUMBER", 60 + colNoW + colMatW + colNarW / 2, tableY + rowH / 2 + 5);
+
+      // Grid line below header
+      ctx.beginPath();
+      ctx.moveTo(60, tableY + rowH);
+      ctx.lineTo(60 + tableW, tableY + rowH);
+      ctx.stroke();
+
+      // Draw rows
+      for (let i = 0; i < 11; i++) {
+        const rowY = tableY + rowH + i * rowH;
+
+        // Row border
+        ctx.beginPath();
+        ctx.moveTo(60, rowY + rowH);
+        ctx.lineTo(60 + tableW, rowY + rowH);
+        ctx.stroke();
+
+        const item = subjects[i];
+
+        // NO centered
+        ctx.fillStyle = '#334155';
+        ctx.font = "500 16px 'Plus Jakarta Sans', sans-serif";
+        ctx.textAlign = 'center';
+        ctx.fillText(item.no, 60 + colNoW / 2, rowY + rowH / 2 + 5);
+
+        // MATERI left-aligned
+        ctx.fillStyle = '#1e293b';
+        ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+        ctx.textAlign = 'left';
+        ctx.fillText(item.materi, 60 + colNoW + 15, rowY + rowH / 2 + 5);
+
+        // NARASUMBER left-aligned
+        ctx.fillStyle = '#334155';
+        ctx.font = "500 16px 'Plus Jakarta Sans', sans-serif";
+        ctx.textAlign = 'left';
+        ctx.fillText(item.narasumber, 60 + colNoW + colMatW + 15, rowY + rowH / 2 + 5);
+      }
+
+      // Draw Vertical column dividers
+      ctx.beginPath();
+      ctx.moveTo(60 + colNoW, tableY);
+      ctx.lineTo(60 + colNoW, tableY + totalTableH);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(60 + colNoW + colMatW, tableY);
+      ctx.lineTo(60 + colNoW + colMatW, tableY + totalTableH);
+      ctx.stroke();
+
+      // Instructor Signature block (Bottom Right)
+      const sigX = 950;
+      ctx.fillStyle = '#0f172a';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillText("INSTRUKTUR", sigX, 700);
+
+      // Digital Signature QR Code for Instruktur
+      try {
+        const insQrText = `VERIFIKASI TANDA TANGAN DIGITAL\nDewan Instruktur GP Ansor Kabupaten Bogor\nNama: ${certInstruktur}\nJabatan: DEWAN INSTRUKTUR\nSertifikat No: ${certNomor}\nStatus: TERVERIFIKASI & SAH`;
+        const insQrUrl = await QRCode.toDataURL(insQrText, { margin: 1, width: 68 });
+        const qrImg = new Image();
+        qrImg.src = insQrUrl;
+        await new Promise(r => { qrImg.onload = () => { ctx.drawImage(qrImg, sigX - 34, 708, 68, 68); r(true); } });
+      } catch (e) {
+        console.error(e);
+      }
+
+      // Printed Name
+      ctx.fillStyle = '#0f172a';
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText(certInstruktur.toUpperCase(), sigX, 800);
     }
   };
 
@@ -646,10 +926,19 @@ export default function KelulusanTab({
     certBody3,
     certKetua,
     certSekretaris,
+    certLocationHijriah,
+    certDateMasehi,
+    certSiapsData,
     customLogo,
     customStempel,
     customTtdKetua,
-    customTtdSekr
+    customTtdSekr,
+    certActivePage,
+    certTtl,
+    certJabatan,
+    certInstruktur,
+    certFoto,
+    certSubjects
   ]);
 
   const downloadCertPng = () => {
@@ -747,7 +1036,8 @@ export default function KelulusanTab({
             body {
               margin: 0;
               padding: 0;
-              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+              font-family: 'Cambria', Georgia, serif;
+              font-size: 14px;
               color: #000000;
               background-color: #ffffff;
               -webkit-print-color-adjust: exact;
@@ -806,10 +1096,11 @@ export default function KelulusanTab({
               flex-grow: 1;
               text-align: right;
               padding-right: 0px;
+              font-family: 'Times New Roman', Times, serif;
             }
             .title-main {
-              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
-              font-size: 21px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 20px;
               font-weight: 800;
               text-transform: uppercase;
               margin: 0;
@@ -818,8 +1109,8 @@ export default function KelulusanTab({
               line-height: 1.2;
             }
             .title-sub1 {
-              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
-              font-size: 24px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 20px;
               font-weight: 800;
               text-transform: uppercase;
               margin: 2px 0 0 0;
@@ -828,8 +1119,8 @@ export default function KelulusanTab({
               line-height: 1.2;
             }
             .title-sub2 {
-              font-family: 'Plus Jakarta Sans', Arial, sans-serif;
-              font-size: 24px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 20px;
               font-weight: 900;
               text-transform: uppercase;
               margin: 2px 0 0 0;
@@ -838,15 +1129,15 @@ export default function KelulusanTab({
               line-height: 1.2;
             }
             .address-info {
-              font-family: 'Inter', Arial, sans-serif;
-              font-size: 10px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 11px;
               font-weight: 500;
               margin: 8px 0 2px 0;
               color: #000000;
             }
             .links-info {
-              font-family: 'Inter', Arial, sans-serif;
-              font-size: 10px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 11px;
               font-weight: 500;
               margin: 0;
               color: #000000;
@@ -858,8 +1149,9 @@ export default function KelulusanTab({
 
             /* Document structure styles */
             .doc-title {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
-              font-size: 13px;
+              font-size: 14px;
               font-weight: 800;
               text-decoration: underline;
               text-transform: uppercase;
@@ -868,21 +1160,24 @@ export default function KelulusanTab({
               letter-spacing: 0.05em;
             }
             .doc-number {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
-              font-size: 12px;
+              font-size: 14px;
               font-weight: 600;
               margin-bottom: 12px;
             }
             .doc-about-label {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
-              font-size: 11px;
+              font-size: 14px;
               font-weight: 700;
               margin-bottom: 2px;
               text-transform: uppercase;
             }
             .doc-about-title {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
-              font-size: 11px;
+              font-size: 14px;
               font-weight: 800;
               text-transform: uppercase;
               max-width: 85%;
@@ -891,24 +1186,26 @@ export default function KelulusanTab({
             }
 
             .bismillah {
-              font-family: 'Playfair Display', Georgia, serif;
+              font-family: 'Cambria', Georgia, serif;
               font-style: italic;
               font-weight: 700;
-              font-size: 13px;
+              font-size: 14px;
               margin-bottom: 4px;
             }
             .opening-text {
+              font-family: 'Cambria', Georgia, serif;
               font-weight: 700;
-              font-size: 11.5px;
+              font-size: 14px;
               margin-bottom: 14px;
             }
 
             /* Table-like row layout for formal documents */
             .doc-table {
+              font-family: 'Cambria', Georgia, serif;
               width: 100%;
               border-collapse: collapse;
               margin-bottom: 12px;
-              font-size: 13px;
+              font-size: 14px;
               line-height: 1.45;
             }
             .doc-table td {
@@ -946,9 +1243,10 @@ export default function KelulusanTab({
             }
 
             .centered-divider {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
               font-weight: 800;
-              font-size: 11px;
+              font-size: 14px;
               text-transform: uppercase;
               letter-spacing: 0.1em;
               margin: 12px 0;
@@ -958,8 +1256,8 @@ export default function KelulusanTab({
             .stats-container {
               margin-top: 6px;
               margin-left: 20px;
-              font-family: 'Inter', sans-serif;
-              font-size: 11px;
+              font-family: 'Cambria', Georgia, serif;
+              font-size: 14px;
             }
             .stats-row {
               display: flex;
@@ -981,8 +1279,8 @@ export default function KelulusanTab({
             .meta-date {
               margin-left: auto;
               width: 280px;
-              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-              font-size: 13px;
+              font-family: 'Cambria', Georgia, serif;
+              font-size: 14px;
               margin-top: 15px;
               margin-bottom: 15px;
               line-height: 1.45;
@@ -993,26 +1291,28 @@ export default function KelulusanTab({
             }
             .meta-date td {
               padding: 2px 0;
-              font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-              font-size: 13px;
+              font-family: 'Cambria', Georgia, serif;
+              font-size: 14px;
               color: #000000;
             }
 
             .instruktur-title {
+              font-family: 'Cambria', Georgia, serif;
               text-align: center;
               font-weight: 800;
-              font-size: 11.5px;
+              font-size: 14px;
               text-transform: uppercase;
               margin-bottom: 20px;
               line-height: 1.35;
             }
 
             .sig-row {
+              font-family: 'Cambria', Georgia, serif;
               display: flex;
               justify-content: space-between;
               margin-top: 20px;
               margin-bottom: 30px;
-              font-size: 11.5px;
+              font-size: 14px;
               text-align: center;
             }
             .sig-col {
@@ -1086,11 +1386,12 @@ export default function KelulusanTab({
             }
 
             .sig-row-mengetahui {
+              font-family: 'Cambria', Georgia, serif;
               display: flex;
               flex-direction: column;
               align-items: center;
               text-align: center;
-              font-size: 11.5px;
+              font-size: 14px;
               margin-top: 15px;
             }
             .sig-mengetahui-title {
@@ -1761,7 +2062,6 @@ export default function KelulusanTab({
                 <th className="p-3 text-center w-20 bg-slate-105 dark:bg-navy-950 font-black text-slate-700 dark:text-white border-l dark:border-navy-850">PERSENTASE</th>
                 <th className="p-3 text-center w-20 border-l dark:border-navy-850">IZIN / MENIT</th>
                 <th className="p-3 text-center w-24 border-l dark:border-navy-850">EVALUASI SISTEM</th>
-                <th className="p-3 w-36 border-l dark:border-navy-850">NO. SERTIFIKAT</th>
                 <th className="p-3 text-center w-24 sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-3px_0_10px_-3px_rgba(0,0,0,0.06)] border-l dark:border-navy-850">AKSI</th>
               </tr>
             </thead>
@@ -1822,32 +2122,34 @@ export default function KelulusanTab({
                       {p.izin_menit || 0} m
                     </td>
 
-                    {/* Evaluasi AI */}
+                     {/* Evaluasi AI */}
                     <td className="p-3 text-center whitespace-nowrap border-l dark:border-navy-850">
                       <div className="flex items-center justify-center space-x-1">
-                        <span className={`px-2 py-0.5 rounded-full border font-black text-[8px] uppercase tracking-wider ${
-                          p.status_kelulusan === 'LULUS'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-900/20'
-                            : (p.status_kelulusan === 'LULUS BERSYARAT'
-                              ? 'bg-amber-50 text-amber-800 border-amber-100 dark:bg-amber-950/15 dark:text-amber-400 dark:border-amber-900/20'
-                              : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/15 dark:text-rose-455 dark:border-rose-900/20')
-                        }`}>
-                          {p.status_kelulusan}
-                        </span>
-                        
-                        <button
-                          onClick={() => handleOpenDiag(p)}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-navy-950 text-emerald-500 rounded-lg transition"
-                          title="Statistik Diagnosa AI"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                        </button>
+                        {(() => {
+                          const displayStatus = p.status_kelulusan || (pct < 75 ? "TIDAK LULUS" : pct === 75 ? "LULUS BERSYARAT" : "LULUS");
+                          return (
+                            <>
+                              <span className={`px-2 py-0.5 rounded-full border font-black text-[8px] uppercase tracking-wider ${
+                                displayStatus === 'LULUS'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-900/20'
+                                  : (displayStatus === 'LULUS BERSYARAT'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-100 dark:bg-amber-950/15 dark:text-amber-400 dark:border-amber-900/20'
+                                    : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/15 dark:text-rose-455 dark:border-rose-900/20')
+                              }`}>
+                                {displayStatus}
+                              </span>
+                              
+                              <button
+                                onClick={() => handleOpenDiag(p)}
+                                className="p-1 hover:bg-slate-100 dark:hover:bg-navy-950 text-emerald-500 rounded-lg transition"
+                                title="Statistik Diagnosa AI"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
-                    </td>
-
-                    {/* Sertifikat card */}
-                    <td className="p-3 font-mono text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[120px] border-l dark:border-navy-850" title={p.no_sertifikat}>
-                      {p.no_sertifikat || '-'}
                     </td>
 
                     {/* Aksi icons */}
@@ -1956,44 +2258,32 @@ export default function KelulusanTab({
             </div>
 
             <form onSubmit={handleSaveEvalSubmit} className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest text-center">POST TEST</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    required
-                    value={evalPost}
-                    onChange={(e) => setEvalPost(Number(e.target.value))}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-navy-850 py-2 rounded-lg text-center font-black text-slate-800 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest text-center">PRAKTIK</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    required
-                    value={evalPraktik}
-                    onChange={(e) => setEvalPraktik(Number(e.target.value))}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-navy-850 py-2 rounded-lg text-center font-black text-slate-800 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest text-center">KEAKTIFAN</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    required
-                    value={evalKeaktifan}
-                    onChange={(e) => setEvalKeaktifan(Number(e.target.value))}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-navy-850 py-2 rounded-lg text-center font-black text-slate-800 dark:text-white"
-                  />
-                </div>
-              </div>
+              {(() => {
+                const p = peserta.find(x => x.id === evalId);
+                if (!p) return null;
+                const logs = presensi.filter(pr => pr.id === p.id);
+                const attMins = logs.reduce((sum, log) => {
+                  const matchingS = sesi.find(s => s.num === log.sesi);
+                  return sum + (matchingS?.duration || 0);
+                }, 0);
+                const attPct = Math.round((attMins / totalDuration) * 100) || 0;
+                return (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest text-center uppercase">HASIL (DURASI HADIR)</label>
+                      <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-navy-850 py-3 rounded-lg text-center font-black text-sm text-slate-800 dark:text-white">
+                        {attMins} m
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest text-center uppercase">PERSENTASE KEHADIRAN</label>
+                      <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-navy-850 py-3 rounded-lg text-center font-black text-sm text-slate-800 dark:text-white">
+                        {attPct}%
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest uppercase">IZIN / KELUAR KELAS (MENIT)</label>
@@ -2009,27 +2299,32 @@ export default function KelulusanTab({
               </div>
 
               <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest uppercase">STATUS KELULUSAN MANUAL</label>
-                <select
-                  value={evaluasiFormStatus()}
-                  onChange={(e) => setEvaluasiFormStatus(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-2.5 py-2.5 rounded-lg font-bold text-slate-700 dark:text-slate-350 focus:outline-none"
-                >
-                  <option value="TIDAK LULUS">TIDAK LULUS</option>
-                  <option value="LULUS BERSYARAT">LULUS BERSYARAT</option>
-                  <option value="LULUS">LULUS</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest uppercase">NOMOR SERTIFIKAT</label>
-                <input
-                  type="text"
-                  value={evalSertifikat}
-                  onChange={(e) => setEvalSertifikat(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg font-mono font-bold dark:text-white"
-                  placeholder="Contoh: CERT/PC/001/2026"
-                />
+                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1 tracking-widest uppercase">STATUS KELULUSAN (OTOMATIS AI)</label>
+                <div className={`w-full border p-3 rounded-lg font-black text-center text-sm transition-colors ${
+                  evalStatus === 'LULUS'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+                    : (evalStatus === 'LULUS BERSYARAT'
+                      ? 'bg-amber-50 text-amber-800 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'
+                      : 'bg-rose-50 text-rose-800 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30')
+                }`}>
+                  {evalStatus}
+                </div>
+                {(() => {
+                  const p = peserta.find(x => x.id === evalId);
+                  if (!p) return null;
+                  const logs = presensi.filter(pr => pr.id === p.id);
+                  const attMins = logs.reduce((sum, log) => {
+                    const matchingS = sesi.find(s => s.num === log.sesi);
+                    return sum + (matchingS?.duration || 0);
+                  }, 0);
+                  const attPct = Math.round((attMins / totalDuration) * 100) || 0;
+                  return (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 text-center leading-relaxed">
+                      Lulus jika &gt;75%, Lulus Bersyarat jika 75%, Tidak Lulus jika &lt;75% <br />
+                      Dihitung otomatis dari kehadiran: <strong className="text-slate-650 dark:text-slate-300">{attMins}m ({attPct}%)</strong>
+                    </p>
+                  );
+                })()}
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-navy-850 flex space-x-2.5">
@@ -2168,133 +2463,315 @@ export default function KelulusanTab({
               
               {/* Form panel */}
               <div className="w-full md:w-1/2 p-6 overflow-y-auto space-y-4 border-r dark:border-navy-850 h-full custom-scrollbar">
-                <h5 className="font-black text-slate-800 dark:text-white text-xs uppercase tracking-widest border-b dark:border-navy-850 pb-2">Kontrol Data Sertifikat</h5>
-                
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nomor Register</label>
-                  <input
-                    type="text"
-                    value={certNomor}
-                    onChange={(e) => setCertNomor(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
-                  <input
-                    type="text"
-                    value={certNama}
-                    onChange={(e) => setCertNama(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 1)</label>
-                  <textarea
-                    rows={2}
-                    value={certBody1}
-                    onChange={(e) => setCertBody1(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 2)</label>
-                  <textarea
-                    rows={2}
-                    value={certBody2}
-                    onChange={(e) => setCertBody2(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 3)</label>
-                  <textarea
-                    rows={2}
-                    value={certBody3}
-                    onChange={(e) => setCertBody3(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pb-3 border-b dark:border-navy-850">
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Ketua Cabang</label>
-                    <input
-                      type="text"
-                      value={certKetua}
-                      onChange={(e) => setCertKetua(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Sekretaris Cabang</label>
-                    <input
-                      type="text"
-                      value={certSekretaris}
-                      onChange={(e) => setCertSekretaris(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
-                    />
+                <div className="flex flex-col space-y-3 border-b dark:border-navy-850 pb-2">
+                  <h5 className="font-black text-slate-800 dark:text-white text-xs uppercase tracking-widest">Kontrol Data Sertifikat</h5>
+                  
+                  {/* Segmented Page Selector */}
+                  <div className="flex bg-slate-100 dark:bg-slate-950 p-1.5 rounded-xl border dark:border-navy-850">
+                    <button
+                      type="button"
+                      onClick={() => setCertActivePage('depan')}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                        certActivePage === 'depan'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>Halaman Depan</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCertActivePage('belakang')}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                        certActivePage === 'belakang'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>Halaman Belakang (Materi)</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Sub Upload replacement elements */}
-                <div className="space-y-4 pt-2">
-                  <h6 className="text-[10px] font-black tracking-widest uppercase text-slate-500 dark:text-slate-400">Sunting Aset Gambar (Opsional)</h6>
-                  <div className="grid grid-cols-2 gap-3 text-[10px]">
+                {certActivePage === 'depan' ? (
+                  <>
                     <div>
-                      <label className="block font-bold text-slate-400 mb-1 uppercase">Ubah Logo</label>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nomor Register</label>
+                      <input
+                        type="text"
+                        value={certNomor}
+                        onChange={(e) => setCertNomor(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={certNama}
+                        onChange={(e) => setCertNama(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 1)</label>
+                      <textarea
+                        rows={2}
+                        value={certBody1}
+                        onChange={(e) => setCertBody1(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 2)</label>
+                      <textarea
+                        rows={2}
+                        value={certBody2}
+                        onChange={(e) => setCertBody2(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Isi Sertifikat (Baris 3)</label>
+                      <textarea
+                        rows={2}
+                        value={certBody3}
+                        onChange={(e) => setCertBody3(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pb-3 border-b dark:border-navy-850">
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Ketua Cabang</label>
+                        <input
+                          type="text"
+                          value={certKetua}
+                          onChange={(e) => setCertKetua(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Sekretaris Cabang</label>
+                        <input
+                          type="text"
+                          value={certSekretaris}
+                          onChange={(e) => setCertSekretaris(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pb-3 border-b dark:border-navy-850">
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Lokasi & Tanggal Hijriah</label>
+                        <input
+                          type="text"
+                          value={certLocationHijriah}
+                          onChange={(e) => setCertLocationHijriah(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Tanggal Masehi</label>
+                        <input
+                          type="text"
+                          value={certDateMasehi}
+                          onChange={(e) => setCertDateMasehi(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pb-3 border-b dark:border-navy-850">
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data Aplikasi SIAPs (QR Code)</label>
+                      <textarea
+                        rows={2}
+                        value={certSiapsData}
+                        onChange={(e) => setCertSiapsData(e.target.value)}
+                        placeholder="Masukkan link verifikasi atau data teks SIAPs untuk QR Code"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 p-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                      <div>
+                        <label className="block text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Unggah File Data SIAPs (.txt, .json, .csv)</label>
+                        <input
+                          type="file"
+                          accept=".txt,.json,.csv,.text"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                if (evt.target?.result) {
+                                  setCertSiapsData(evt.target.result as string);
+                                }
+                              };
+                              reader.readAsText(file);
+                            }
+                          }}
+                          className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850 text-[10px]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sub Upload replacement elements */}
+                    <div className="space-y-4 pt-2">
+                      <h6 className="text-[10px] font-black tracking-widest uppercase text-slate-500 dark:text-slate-400">Sunting Aset Gambar (Opsional)</h6>
+                      <div className="grid grid-cols-2 gap-3 text-[10px]">
+                        <div>
+                          <label className="block font-bold text-slate-400 mb-1 uppercase">Ubah Logo</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleCustomImageUpload(e, setCustomLogo)}
+                            className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-400 mb-1 uppercase">Ubah Stempel</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleCustomImageUpload(e, setCustomStempel)}
+                            className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-400 mb-1 uppercase">TTD Ketua</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleCustomImageUpload(e, setCustomTtdKetua)}
+                            className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-400 mb-1 uppercase">TTD Sekr.</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleCustomImageUpload(e, setCustomTtdSekr)}
+                            className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomLogo(null);
+                          setCustomStempel(null);
+                          setCustomTtdKetua(null);
+                          setCustomTtdSekr(null);
+                        }}
+                        className="w-full py-1.5 text-[10px] uppercase font-black tracking-widest bg-slate-100 hover:bg-slate-200 dark:bg-navy-950 dark:hover:bg-navy-900 border dark:border-navy-850 text-slate-600 dark:text-slate-400 rounded-lg transition"
+                      >
+                        Reset Visual Default
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={certNama}
+                        onChange={(e) => setCertNama(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Tempat, Tanggal Lahir (TTL)</label>
+                      <input
+                        type="text"
+                        value={certTtl}
+                        onChange={(e) => setCertTtl(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                        placeholder="Contoh: BOGOR, 03/03/1997"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Asal Utusan (PAC)</label>
+                      <input
+                        type="text"
+                        value={certUtusan}
+                        onChange={(e) => setCertUtusan(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Jabatan Kaderisasi</label>
+                      <input
+                        type="text"
+                        value={certJabatan}
+                        onChange={(e) => setCertJabatan(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Nama Instruktur Penanggungjawab</label>
+                      <input
+                        type="text"
+                        value={certInstruktur}
+                        onChange={(e) => setCertInstruktur(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Unggah / Ganti Pas Foto Peserta (3x4)</label>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleCustomImageUpload(e, setCustomLogo)}
-                        className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
+                        onChange={(e) => handleCustomImageUpload(e, setCertFoto)}
+                        className="w-full border p-2 rounded-lg bg-slate-50 dark:bg-slate-950 dark:border-navy-850 text-xs text-slate-700 dark:text-slate-350"
                       />
+                      {certFoto && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <img src={certFoto} alt="Preview Foto" className="w-12 h-16 object-cover border rounded bg-slate-100" />
+                          <button
+                            type="button"
+                            onClick={() => setCertFoto(null)}
+                            className="text-[10px] text-rose-500 font-bold hover:underline"
+                          >
+                            Hapus Foto
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="block font-bold text-slate-400 mb-1 uppercase">Ubah Stempel</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleCustomImageUpload(e, setCustomStempel)}
-                        className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
-                      />
+
+                    <div className="pt-2 border-t dark:border-navy-850">
+                      <h6 className="text-[10px] font-black tracking-widest uppercase text-slate-500 dark:text-slate-400 mb-2">Daftar Narasumber Materi</h6>
+                      <div className="space-y-3 bg-slate-100 dark:bg-slate-900/60 p-3 rounded-xl border dark:border-navy-850 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {certSubjects.map((sub, idx) => (
+                          <div key={sub.no} className="flex flex-col space-y-1">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              {sub.no}. {sub.materi}
+                            </span>
+                            <input
+                              type="text"
+                              value={sub.narasumber}
+                              onChange={(e) => {
+                                const newSubjects = [...certSubjects];
+                                newSubjects[idx] = { ...newSubjects[idx], narasumber: e.target.value };
+                                setCertSubjects(newSubjects);
+                              }}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <label className="block font-bold text-slate-400 mb-1 uppercase">TTD Ketua</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleCustomImageUpload(e, setCustomTtdKetua)}
-                        className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-400 mb-1 uppercase">TTD Sekr.</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleCustomImageUpload(e, setCustomTtdSekr)}
-                        className="w-full border p-1 rounded bg-slate-50 dark:bg-slate-950 dark:border-navy-850"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomLogo(null);
-                      setCustomStempel(null);
-                      setCustomTtdKetua(null);
-                      setCustomTtdSekr(null);
-                    }}
-                    className="w-full py-1.5 text-[10px] uppercase font-black tracking-widest bg-slate-100 hover:bg-slate-200 dark:bg-navy-950 dark:hover:bg-navy-900 border dark:border-navy-850 text-slate-600 dark:text-slate-400 rounded-lg transition"
-                  >
-                    Reset Visual Default
-                  </button>
-                </div>
+                  </>
+                )}
 
               </div>
 
@@ -2516,32 +2993,38 @@ export default function KelulusanTab({
 
                 {/* Section 5: Statistik Kelulusan (Customizable inputs) */}
                 <div className="space-y-4">
-                  <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-100 dark:border-navy-850 pb-1.5">5. Hasil Statistik Kelulusan</h5>
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-navy-850 pb-1.5">
+                    <h5 className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">5. Hasil Statistik Kelulusan</h5>
+                    <span className="text-[8px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded uppercase tracking-wider">Otomatis Sistem</span>
+                  </div>
                   <div>
                     <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL PESERTA (ANGKAH & TERBILANG)</label>
                     <input
                       type="text"
+                      readOnly
+                      disabled
                       value={skTextTotal}
-                      onChange={(e) => setSkTextTotal(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                      className="w-full bg-slate-100/70 dark:bg-navy-950/40 border border-dashed border-slate-250 dark:border-navy-850/60 px-3 py-2 rounded-xl text-xs font-black text-slate-550 dark:text-slate-400 cursor-not-allowed font-mono"
                     />
                   </div>
                   <div>
                     <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL LULUS (ANGKAH & TERBILANG)</label>
                     <input
                       type="text"
+                      readOnly
+                      disabled
                       value={skTextLulus}
-                      onChange={(e) => setSkTextLulus(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                      className="w-full bg-slate-100/70 dark:bg-navy-950/40 border border-dashed border-slate-250 dark:border-navy-850/60 px-3 py-2 rounded-xl text-xs font-black text-slate-550 dark:text-slate-400 cursor-not-allowed font-mono"
                     />
                   </div>
                   <div>
                     <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 mb-1.5 tracking-widest uppercase">TOTAL TIDAK LULUS (ANGKAH & TERBILANG)</label>
                     <input
                       type="text"
+                      readOnly
+                      disabled
                       value={skTextTidakLulus}
-                      onChange={(e) => setSkTextTidakLulus(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-navy-850 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-emerald-500 font-mono"
+                      className="w-full bg-slate-100/70 dark:bg-navy-950/40 border border-dashed border-slate-250 dark:border-navy-850/60 px-3 py-2 rounded-xl text-xs font-black text-slate-550 dark:text-slate-400 cursor-not-allowed font-mono"
                     />
                   </div>
                 </div>
@@ -3011,6 +3494,61 @@ export default function KelulusanTab({
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal Progress Evaluasi AI */}
+      {isEvaluating && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-navy-900 rounded-[24px] shadow-2xl p-8 max-w-md w-full text-center">
+            <div className="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+              {/* Outer Pulse/Rotator */}
+              <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-navy-900"></div>
+              <div 
+                className="absolute inset-0 rounded-full border-4 border-t-emerald-500 border-r-teal-500 border-b-transparent border-l-transparent animate-spin"
+                style={{ animationDuration: '1.5s' }}
+              ></div>
+              <Cpu className="w-10 h-10 text-emerald-500 animate-pulse" />
+            </div>
+
+            <h3 className="text-md font-black text-slate-850 dark:text-white uppercase tracking-wider mb-1">
+              Menjalankan Evaluasi Otomatis
+            </h3>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6 font-medium">
+              Sistem sedang melakukan sinkronisasi data peserta...
+            </p>
+
+            {/* Progress Track */}
+            <div className="w-full bg-slate-100 dark:bg-navy-950 h-3 rounded-full overflow-hidden mb-3 border border-slate-200/40 dark:border-navy-900">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${evalProgress}%` }}
+              ></div>
+            </div>
+
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 dark:text-slate-550 mb-6 px-1">
+              <span className="uppercase tracking-widest text-emerald-500 font-black">
+                {evalProgress < 30 ? (
+                  "Melatih Klasifikasi C4.5..."
+                ) : evalProgress < 65 ? (
+                  "Menghitung Probabilitas Bayes..."
+                ) : evalProgress < 90 ? (
+                  "Mengklasifikasikan Kader..."
+                ) : evalProgress < 100 ? (
+                  "Finalisasi Evaluasi..."
+                ) : (
+                  "Evaluasi Selesai!"
+                )}
+              </span>
+              <span className="font-mono text-xs font-black text-slate-700 dark:text-slate-300">
+                {evalProgress}%
+              </span>
+            </div>
+
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed max-w-xs mx-auto">
+              Memproses kriteria kelulusan &gt;= 75% kehadiran untuk {peserta.length} peserta secara real-time.
+            </p>
           </div>
         </div>
       )}
