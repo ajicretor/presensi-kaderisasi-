@@ -24,12 +24,18 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
       try {
         const client = getSupabaseClient();
         if (client) {
-          // Attempt direct pull for the user from Supabase to handle multi-device credential synchronization immediately
-          const { data, error: dbError } = await client
+          // Attempt direct pull for the user from Supabase with a 2.5s timeout fallback to avoid infinite loading in case of network/cold-start issues
+          const queryPromise = client
             .from('tim')
             .select('*')
             .eq('username', username.trim().toLowerCase())
             .maybeSingle();
+
+          const timeoutPromise = new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('Koneksi timeout Supabase')), 2500)
+          );
+
+          const { data, error: dbError } = await Promise.race([queryPromise, timeoutPromise]);
 
           if (data && !dbError) {
             if (data.password === password) {
@@ -41,10 +47,12 @@ export default function LoginScreen({ tim, branding, onLoginSuccess }: LoginScre
               setError('Kombinasi username atau password salah.');
               return;
             }
+          } else if (dbError) {
+            console.warn("Database auth check returned error, falling back to local:", dbError);
           }
         }
       } catch (err) {
-        console.warn("Direct database auth check failed, falling back to cached list:", err);
+        console.warn("Direct database auth check failed or timed out, falling back to cached list:", err);
       }
 
       // Offline / cached local fallback list

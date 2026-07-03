@@ -1374,6 +1374,15 @@ export default function App() {
             <div className="w-full bg-slate-100 dark:bg-navy-950 rounded-full h-1.5 overflow-hidden">
               <div className="bg-emerald-500 h-full w-2/3 rounded-full animate-pulse"></div>
             </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setIsSyncing(false)}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-navy-950 dark:hover:bg-navy-900 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-navy-800 rounded-xl text-xs font-bold transition uppercase tracking-wider"
+              >
+                Masuk Offline (Lewati)
+              </button>
+            </div>
           </div>
         </div>
       )}
