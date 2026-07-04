@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserCheck, UserPlus, AtSign, Lock, Trash2, Edit2, X } from 'lucide-react';
 import { Tim } from '../types';
+import { INDONESIA_REGIONS } from '../utils/regions';
 
 interface TimTabProps {
   tim: Tim[];
@@ -30,7 +31,8 @@ export default function TimTab({
   const defaultPerms = ['dash', 'scan', 'rekap'];
   const [perms, setPerms] = useState<string[]>(defaultPerms);
 
-  const isSuperAdminUser = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
+  const isSuperAdminUser = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.role === 'Admin';
+  const canManage = currentUser.role === 'Admin' || currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
 
   const openAddModal = () => {
     setEditIndex(null);
@@ -91,7 +93,7 @@ export default function TimTab({
           <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase font-bold">Kelola hak akses akun operator lapangan pendamping.</p>
         </div>
         
-        {currentUser.role === 'Admin' && (
+        {canManage && (
           <button
             onClick={openAddModal}
             className="bg-slate-900 dark:bg-slate-950 hover:bg-slate-800 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center space-x-2 shadow-sm transition active:scale-[0.98]"
@@ -153,7 +155,7 @@ export default function TimTab({
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center space-x-1">
                     {/* Allow self-modification, or full actions if Admin */}
-                    {(currentUser.role === 'Admin' || currentUser.username === t.username) && (
+                    {(canManage || currentUser.username === t.username) && (
                       <button
                         onClick={() => openEditModal(t, idx)}
                         className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg border border-blue-100/60 transition"
@@ -163,7 +165,7 @@ export default function TimTab({
                       </button>
                     )}
 
-                    {currentUser.role === 'Admin' && t.username !== 'admin' && (
+                    {canManage && t.username !== 'admin' && (
                       <button
                         onClick={() => onDeleteTim(idx)}
                         className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-100/60 transition"
@@ -262,33 +264,16 @@ export default function TimTab({
                     onChange={(e) => setFormKabKota(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2.5 rounded-lg text-xs font-semibold dark:text-white dark:bg-slate-950"
                   >
-                    <option value="KABUPATEN BOGOR">Kabupaten Bogor</option>
-                    <option value="KOTA BOGOR">Kota Bogor</option>
-                    <option value="KABUPATEN SUKABUMI">Kabupaten Sukabumi</option>
-                    <option value="KOTA SUKABUMI">Kota Sukabumi</option>
-                    <option value="KABUPATEN CIANJUR">Kabupaten Cianjur</option>
-                    <option value="KABUPATEN BANDUNG">Kabupaten Bandung</option>
-                    <option value="KABUPATEN BANDUNG BARAT">Kabupaten Bandung Barat</option>
-                    <option value="KOTA BANDUNG">Kota Bandung</option>
-                    <option value="KOTA CIMAHI">Kota Cimahi</option>
-                    <option value="KABUPATEN GARUT">Kabupaten Garut</option>
-                    <option value="KABUPATEN TASIKMALAYA">Kabupaten Tasikmalaya</option>
-                    <option value="KOTA TASIKMALAYA">Kota Tasikmalaya</option>
-                    <option value="KABUPATEN CIAMIS">Kabupaten Ciamis</option>
-                    <option value="KOTA BANJAR">Kota Banjar</option>
-                    <option value="KABUPATEN PANGANDARAN">Kabupaten Pangandaran</option>
-                    <option value="KABUPATEN KUNINGAN">Kabupaten Kuningan</option>
-                    <option value="KABUPATEN CIREBON">Kabupaten Cirebon</option>
-                    <option value="KOTA CIREBON">Kota Cirebon</option>
-                    <option value="KABUPATEN MAJALENGKA">Kabupaten Majalengka</option>
-                    <option value="KABUPATEN SUMEDANG">Kabupaten Sumedang</option>
-                    <option value="KABUPATEN INDRAMAYU">Kabupaten Indramayu</option>
-                    <option value="KABUPATEN SUBANG">Kabupaten Subang</option>
-                    <option value="KABUPATEN PURWAKARTA">Kabupaten Purwakarta</option>
-                    <option value="KABUPATEN KARAWANG">Kabupaten Karawang</option>
-                    <option value="KABUPATEN BEKASI">Kabupaten Bekasi</option>
-                    <option value="KOTA BEKASI">Kota Bekasi</option>
-                    <option value="KOTA DEPOK">Kota Depok</option>
+                    <option value="">Pilih Kabupaten/Kota</option>
+                    {Object.entries(INDONESIA_REGIONS).map(([provinsi, daftarKabKota]) => (
+                      <optgroup key={provinsi} label={provinsi} className="font-bold text-slate-500 uppercase">
+                        {daftarKabKota.map((kabKota) => (
+                          <option key={kabKota} value={kabKota}>
+                            {kabKota}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
               )}

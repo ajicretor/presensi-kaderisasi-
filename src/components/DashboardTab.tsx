@@ -277,7 +277,7 @@ export default function DashboardTab({
             </button>
           )}
           <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest text-right">
-            PC GP ANSOR BOGOR &copy; 2026
+            {branding.organisasi} &copy; 2026
           </div>
         </div>
       </div>

@@ -20,7 +20,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Printer,
-  RefreshCw
+  RefreshCw,
+  Activity
 } from 'lucide-react';
 
 import { Peserta, Sesi, Presensi, Tim, Branding, SystemState } from './types';
@@ -52,6 +53,8 @@ import RekapTab from './components/RekapTab';
 import KelulusanTab from './components/KelulusanTab';
 import TimTab from './components/TimTab';
 import CustomTab from './components/CustomTab';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import { INDONESIA_REGIONS } from './utils/regions';
 
 // DEFAULT STATIC DEMO DATA FOR OFFLINE-FALLBACK
 const DEFAULT_PESERTA: Peserta[] = [];
@@ -59,13 +62,13 @@ const DEFAULT_PESERTA: Peserta[] = [];
 const DEFAULT_SESI: Sesi[] = [];
 
 const DEFAULT_TIM: Tim[] = [
-  { username: "admin", nama: "Administrator Wilayah", role: "Admin", password: "admin", permissions: ["dash", "peserta", "kelulusan", "scan", "sesi", "rekap"] }
+  { username: "admin", nama: "Super Administrator Pusat", role: "SuperAdmin", password: "admin", permissions: ["dash", "peserta", "kelulusan", "scan", "sesi", "rekap", "tim"], is_superadmin: true, kab_kota: "" }
 ];
 
 const DEFAULT_BRANDING: Branding = {
   appName: "PRESENSI-ANSOR PRO",
-  organisasi: "PC GP ANSOR KABUPATEN BOGOR",
-  cabang: "KABUPATEN BOGOR",
+  organisasi: "PIMPINAN PUSAT GP ANSOR (NASIONAL)",
+  cabang: "NASIONAL",
   totalSesi: 14,
   logo: `<svg class="w-11 h-11" viewBox="0 0 200 215" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ansorGrad" x1="20" y1="180" x2="180" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d8ff8" /><stop offset="40%" stop-color="#06b6d4" /><stop offset="70%" stop-color="#0d9488" /><stop offset="100%" stop-color="#10b981" /></linearGradient></defs><circle cx="100" cy="100" r="85" fill="url(#ansorGrad)" opacity="0.05" /><path d="M 44 146 C 18 114 18 64 54 34 C 80 12 120 12 146 34" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" /><path d="M 33 134 C 10 98 10 48 46 18 C 72 -5 128 -5 154 18" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" opacity="0.7" /><path d="M 146 34 C 172 64 172 114 146 146 C 136 156 122 165 100 168" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" /><g stroke="url(#ansorGrad)" stroke-width="3.5" stroke-linecap="round" opacity="0.9"><line x1="100" y1="95" x2="100" y2="60" /><line x1="100" y1="95" x2="130" y2="65" /><line x1="100" y1="95" x2="140" y2="82" /><line x1="100" y1="95" x2="140" y2="108" /><line x1="100" y1="95" x2="130" y2="125" /><line x1="100" y1="95" x2="70" y2="65" /><line x1="100" y1="95" x2="60" y2="82" /><line x1="100" y1="95" x2="60" y2="108" /><line x1="100" y1="95" x2="70" y2="125" /></g><circle cx="100" cy="95" r="42" stroke="white" stroke-width="3" fill="none" opacity="0.3" /><circle cx="100" cy="78" r="9.5" fill="url(#ansorGrad)" /><circle cx="74" cy="94" r="8" fill="url(#ansorGrad)" /><circle cx="126" cy="94" r="8" fill="url(#ansorGrad)" /><path d="M 100 90 C 96 90, 84 98, 74 104 C 60 112, 50 116, 50 116 C 50 116, 62 110, 74 106 C 86 102, 92 108, 92 118 L 92 142 C 92 148, 88 152, 82 156 C 72 161, 58 162, 58 162 C 58 162, 74 161, 86 156 C 94 152, 100 144, 100 142 C 100 144, 106 152, 114 156 C 126 161, 142 162, 142 162 C 142 162, 128 161, 118 156 C 112 152, 108 148, 108 142 L 108 118 C 108 108, 114 102, 126 106 C 138 110, 150 116, 150 116 C 150 116, 140 112, 126 104 C 116 98, 104 90, 100 90 Z" fill="url(#ansorGrad)" /><path d="M 52 152 C 65 168, 82 173, 100 173 C 118 173, 135 168, 148 152" stroke="url(#ansorGrad)" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M 64 163 C 74 177, 86 181, 100 181 C 114 181, 126 177, 136 163" stroke="url(#ansorGrad)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 76 172 C 83 186, 91 189, 100 189 C 109 189, 117 186, 124 172" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 88 181 C 92 192, 96 194, 100 194 C 104 194, 108 192, 112 181" stroke="url(#ansorGrad)" stroke-width="2" stroke-linecap="round" fill="none" /><g transform="translate(100, 32) scale(0.9)"><path d="M -25 15 C -5 -5, 20 -20, 35 -15 C 20 -5, 10 5, 2 20 C -5 15, -15 12, -25 15 Z" fill="url(#ansorGrad)" /><path d="M 2 20 C 5 10, 18 5, 28 5 C 18 12, 12 20, 10 32 C 6 27, 4 23, 2 20 Z" fill="url(#ansorGrad)" /><path d="M -15 10 C -25 2, -32 -5, -40 2 C -32 8, -25 12, -15 10 Z" fill="url(#ansorGrad)" /></g></svg>`,
   themeColor: "emerald",
@@ -77,7 +80,7 @@ const DEFAULT_PRESENSI: Presensi[] = [];
 
 export default function App() {
   // Navigation & authentication states
-  const [activeTab, setActiveTab] = useState<'dash' | 'scan' | 'sesi' | 'peserta' | 'rekap' | 'kelulusan' | 'tim' | 'custom'>('dash');
+  const [activeTab, setActiveTab] = useState<'dash' | 'super-dash' | 'scan' | 'sesi' | 'peserta' | 'rekap' | 'kelulusan' | 'tim' | 'custom'>('dash');
   const [currentUser, setCurrentUser] = useState<Tim | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -140,6 +143,12 @@ export default function App() {
           let b = parsed.branding;
           if (b && (!b.logo || b.logo.includes('stroke-width="9"') || b.logo.includes('M30 40') || b.logo.includes('viewBox="0 0 120 120"') || b.logo.includes('blueTeal') || b.logo.includes('stop-color="#059669"') || b.logo.includes('goldGrad'))) {
             b = { ...b, logo: DEFAULT_BRANDING.logo };
+          }
+          if (b && (b.organisasi === "PC GP ANSOR KABUPATEN BOGOR" || b.organisasi === "PIMPINAN WILAYAH GP ANSOR JAWA BARAT")) {
+            b.organisasi = "PIMPINAN PUSAT GP ANSOR (NASIONAL)";
+          }
+          if (b && (b.cabang === "KABUPATEN BOGOR" || b.cabang === "JAWA BARAT")) {
+            b.cabang = "NASIONAL";
           }
           setBranding(b);
         }
@@ -787,6 +796,26 @@ export default function App() {
     }
   };
 
+  // Compute effective branding based on who is logged in
+  const effectiveBranding = React.useMemo(() => {
+    if (!currentUser) return branding;
+    const isSuper = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
+    if (isSuper) {
+      return {
+        ...branding,
+        organisasi: "PIMPINAN PUSAT GP ANSOR (NASIONAL)",
+        cabang: "NASIONAL"
+      };
+    } else if (currentUser.kab_kota) {
+      return {
+        ...branding,
+        organisasi: `PC GP ANSOR ${currentUser.kab_kota.toUpperCase()}`,
+        cabang: currentUser.kab_kota.toUpperCase()
+      };
+    }
+    return branding;
+  }, [currentUser, branding]);
+
   // --- AUTH ROUTING ---
   if (!currentUser) {
     return (
@@ -795,6 +824,12 @@ export default function App() {
         branding={branding}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
+          const isUserSuperAdmin = user.role === 'SuperAdmin' || user.is_superadmin === true || user.username === 'admin';
+          if (isUserSuperAdmin) {
+            setActiveTab('super-dash');
+          } else {
+            setActiveTab('dash');
+          }
           triggerAlert("Akses Diterima", `Ahlan Wa Sahlan, Sahabat ${user.nama}!`, "success");
           // Automatically trigger sync immediately upon login
           setTimeout(() => {
@@ -806,7 +841,7 @@ export default function App() {
   }
 
   // Permissions validation
-  const isSuperAdmin = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
+  const isSuperAdmin = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
   const isAdmin = currentUser.role === 'Admin' || isSuperAdmin;
   const perms = currentUser.permissions || [];
 
@@ -855,20 +890,34 @@ export default function App() {
         {/* Brand Banner */}
         <div className="flex h-20 items-center px-6 border-b border-slate-800 gap-3">
           <div className="bg-white p-2 rounded-xl text-white shadow-lg flex items-center justify-center shrink-0 w-11 h-11">
-            {branding && branding.logo && (typeof branding.logo === 'string') && (branding.logo.trim().startsWith('<svg') || branding.logo.trim().startsWith('<div')) ? (
-              <div dangerouslySetInnerHTML={{ __html: branding.logo }} className="text-slate-900 scale-110 flex items-center justify-center w-7 h-7" />
-            ) : branding && branding.logo ? (
-              <img src={branding.logo} alt="Logo" className="w-7 h-7 object-contain rounded-md" referrerPolicy="no-referrer" />
+            {effectiveBranding && effectiveBranding.logo && (typeof effectiveBranding.logo === 'string') && (effectiveBranding.logo.trim().startsWith('<svg') || effectiveBranding.logo.trim().startsWith('<div')) ? (
+              <div dangerouslySetInnerHTML={{ __html: effectiveBranding.logo }} className="text-slate-900 scale-110 flex items-center justify-center w-7 h-7" />
+            ) : effectiveBranding && effectiveBranding.logo ? (
+              <img src={effectiveBranding.logo} alt="Logo" className="w-7 h-7 object-contain rounded-md" referrerPolicy="no-referrer" />
             ) : null}
           </div>
           <div className="truncate">
-            <h1 className="font-extrabold text-sm tracking-tight text-white uppercase">{branding.appName}</h1>
-            <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">{branding.organisasi}</p>
+            <h1 className="font-extrabold text-sm tracking-tight text-white uppercase">{effectiveBranding.appName}</h1>
+            <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">{effectiveBranding.organisasi}</p>
           </div>
         </div>
 
         {/* Sidebar Navigation */}
         <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 custom-scrollbar">
+          {isSuperAdmin && (
+            <button
+              onClick={() => { setActiveTab('super-dash'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
+                activeTab === 'super-dash' 
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' 
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+              }`}
+            >
+              <Activity className="w-4.5 h-4.5 text-purple-400" />
+              <span>Dashboard Pusat</span>
+            </button>
+          )}
+
           {canDash && (
             <button
               onClick={() => { setActiveTab('dash'); setIsSidebarOpen(false); }}
@@ -1062,33 +1111,15 @@ export default function App() {
                   className="bg-slate-100 dark:bg-navy-950 text-slate-800 dark:text-white border border-slate-200 dark:border-navy-800 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-amber-500 focus:outline-none font-bold"
                 >
                   <option value="all">Semua Kabupaten/Kota</option>
-                  <option value="KABUPATEN BOGOR">Kabupaten Bogor</option>
-                  <option value="KOTA BOGOR">Kota Bogor</option>
-                  <option value="KABUPATEN SUKABUMI">Kabupaten Sukabumi</option>
-                  <option value="KOTA SUKABUMI">Kota Sukabumi</option>
-                  <option value="KABUPATEN CIANJUR">Kabupaten Cianjur</option>
-                  <option value="KABUPATEN BANDUNG">Kabupaten Bandung</option>
-                  <option value="KABUPATEN BANDUNG BARAT">Kabupaten Bandung Barat</option>
-                  <option value="KOTA BANDUNG">Kota Bandung</option>
-                  <option value="KOTA CIMAHI">Kota Cimahi</option>
-                  <option value="KABUPATEN GARUT">Kabupaten Garut</option>
-                  <option value="KABUPATEN TASIKMALAYA">Kabupaten Tasikmalaya</option>
-                  <option value="KOTA TASIKMALAYA">Kota Tasikmalaya</option>
-                  <option value="KABUPATEN CIAMIS">Kabupaten Ciamis</option>
-                  <option value="KOTA BANJAR">Kota Banjar</option>
-                  <option value="KABUPATEN PANGANDARAN">Kabupaten Pangandaran</option>
-                  <option value="KABUPATEN KUNINGAN">Kabupaten Kuningan</option>
-                  <option value="KABUPATEN CIREBON">Kabupaten Cirebon</option>
-                  <option value="KOTA CIREBON">Kota Cirebon</option>
-                  <option value="KABUPATEN MAJALENGKA">Kabupaten Majalengka</option>
-                  <option value="KABUPATEN SUMEDANG">Kabupaten Sumedang</option>
-                  <option value="KABUPATEN INDRAMAYU">Kabupaten Indramayu</option>
-                  <option value="KABUPATEN SUBANG">Kabupaten Subang</option>
-                  <option value="KABUPATEN PURWAKARTA">Kabupaten Purwakarta</option>
-                  <option value="KABUPATEN KARAWANG">Kabupaten Karawang</option>
-                  <option value="KABUPATEN BEKASI">Kabupaten Bekasi</option>
-                  <option value="KOTA BEKASI">Kota Bekasi</option>
-                  <option value="KOTA DEPOK">Kota Depok</option>
+                  {Object.entries(INDONESIA_REGIONS).map(([provinsi, daftarKabKota]) => (
+                    <optgroup key={provinsi} label={provinsi} className="font-bold text-slate-500 dark:text-slate-400 uppercase">
+                      {daftarKabKota.map((kabKota) => (
+                        <option key={kabKota} value={kabKota}>
+                          {kabKota}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
             )}
@@ -1117,12 +1148,22 @@ export default function App() {
         {/* SCROLLABLE VIEWPORT */}
         <main className="flex-grow overflow-y-auto p-6 space-y-6 pb-24 md:pb-6 custom-scrollbar">
           
+          {activeTab === 'super-dash' && isSuperAdmin && (
+            <SuperAdminDashboard
+              peserta={peserta}
+              sesi={sesi}
+              presensi={presensi}
+              tim={tim}
+              branding={effectiveBranding}
+            />
+          )}
+
           {activeTab === 'dash' && (
             <DashboardTab
               peserta={displayedPeserta}
               sesi={displayedSesi}
               presensi={displayedPresensi}
-              branding={branding}
+              branding={effectiveBranding}
               activeSesiId={activeSesiId}
               onResetCache={handleResetCache}
               supabaseConnected={supabaseConnected}
@@ -1137,7 +1178,7 @@ export default function App() {
               peserta={displayedPeserta}
               sesi={displayedSesi}
               presensi={displayedPresensi}
-              branding={branding}
+              branding={effectiveBranding}
               onRecordPresence={handleRecordPresence}
               activeSesiId={activeSesiId}
             />
@@ -1157,7 +1198,7 @@ export default function App() {
           {activeTab === 'peserta' && (
             <PesertaTab
               peserta={displayedPeserta}
-              branding={branding}
+              branding={effectiveBranding}
               onSavePeserta={handleSavePeserta}
               onDeletePeserta={handleDeletePeserta}
               onPrintQr={handleOpenPrintQr}
@@ -1168,7 +1209,7 @@ export default function App() {
             <RekapTab
               presensi={displayedPresensi}
               sesi={displayedSesi}
-              branding={branding}
+              branding={effectiveBranding}
               currentUserRole={currentUser.role}
               currentUserPermissions={currentUser.permissions}
               currentUserName={currentUser.nama}
@@ -1180,7 +1221,7 @@ export default function App() {
               peserta={displayedPeserta}
               sesi={displayedSesi}
               presensi={displayedPresensi}
-              branding={branding}
+              branding={effectiveBranding}
               onSaveEvaluasi={handleSaveEvaluasi}
               onBulkUpdateKelulusan={handleBulkUpdateKelulusan}
               currentUserRole={currentUser.role}
@@ -1200,7 +1241,7 @@ export default function App() {
 
           {activeTab === 'custom' && (
             <CustomTab
-              branding={branding}
+              branding={effectiveBranding}
               onSaveBranding={handleSaveBranding}
               onSaveSupabaseKeys={handleSaveSupabaseKeys}
               supabaseConnected={supabaseConnected}
@@ -1219,8 +1260,18 @@ export default function App() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-205 dark:border-navy-850 fixed bottom-0 inset-x-0 py-2.5 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-30 md:hidden overflow-x-auto custom-scrollbar">
-        <div className="min-w-[420px] max-w-md mx-auto grid grid-cols-6 gap-1 px-3 text-center whitespace-nowrap text-slate-500">
+        <div className={`min-w-[420px] max-w-md mx-auto grid ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} gap-1 px-3 text-center whitespace-nowrap text-slate-500`}>
           
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab('super-dash')}
+              className={`flex flex-col items-center space-y-1 ${activeTab === 'super-dash' ? 'text-purple-500' : 'text-slate-400'}`}
+            >
+              <Activity className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
+              <span className="text-[8px] font-black uppercase tracking-wider">Pusat</span>
+            </button>
+          )}
+
           {canDash && (
             <button
               onClick={() => setActiveTab('dash')}
@@ -1383,7 +1434,7 @@ export default function App() {
                     {peserta.find(k => k.id === printQrId)?.nama}
                   </h5>
                   <p className="text-xs text-slate-505 dark:text-slate-400 font-semibold mt-0.5">
-                    {branding.delegationType || 'PAC'} {peserta.find(k => k.id === printQrId)?.utusan}
+                    {effectiveBranding.delegationType || 'PAC'} {peserta.find(k => k.id === printQrId)?.utusan}
                   </p>
                 </div>
                 <div className="flex justify-center bg-white p-2.5 rounded-xl border border-slate-100 inline-block mx-auto shadow-inner">
@@ -1421,7 +1472,7 @@ export default function App() {
                               ${k?.foto ? `<img class="photo" src="${k.foto}" />` : `<div class="initial-photo">${k?.nama.charAt(0)}</div>`}
                             </div>
                             <div class="name">${k?.nama}</div>
-                            <div class="sub">${branding.delegationType || 'PAC'} ${k?.utusan}</div>
+                            <div class="sub">${effectiveBranding.delegationType || 'PAC'} ${k?.utusan}</div>
                             <img class="qr" src="${cardQrDataUrl}" />
                             <div style="font-family: monospace; font-size: 9px; margin-top: 10px; color: #999;">${printQrId}</div>
                           </div>

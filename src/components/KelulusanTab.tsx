@@ -430,8 +430,8 @@ export default function KelulusanTab({
     setCertNomor(p.no_sertifikat || "06.020 / PC-IX-22/SK-01/PKD-XXIX/VI/2026");
     setCertNama(p.nama);
     setCertUtusan(p.utusan);
-    setCertBody1("TELAH MENYELESAIKAN PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN XXIX PIMPINAN CABANG");
-    setCertBody2("GERAKAN PEMUDA ANSOR KABUPATEN BOGOR PADA TANGGAL 26 - 28 JUNI 2026 BERTEMPAT");
+    setCertBody1("TELAH MENYELESAIKAN PELATIHAN KEPEMIMPINAN DASAR (PKD) ANGKATAN XXIX");
+    setCertBody2(`${branding.organisasi.toUpperCase()} PADA TANGGAL 26 - 28 JUNI 2026 BERTEMPAT`);
     setCertBody3("DI SDIT NURUL AKBAR DESA GANDOANG KECAMATAN CILEUNGSI KABUPATEN BOGOR");
     setCertKetua("DHOMIRY A GHAZALY., S.H");
     setCertSekretaris("M. ANGGA GUNAEFI., S.Pd");
@@ -1708,7 +1708,7 @@ export default function KelulusanTab({
               </div>
 
               <!-- Verification & Validation Stamp -->
-              ${useDocumentValidation ? ` <div class="validation-badge"> <div class="validation-qr"> <img src="${qrValidationImg}" alt="Validation QR" /> </div> <div class="validation-details"> <div class="validation-title">VALIDASI SISTEM KADERISASI</div> <div class="validation-text"><strong>Operator Cetak:</strong> ${skOperator}</div> <div class="validation-text"><strong>Waktu Cetak:</strong> ${skWaktuCetak}</div> <div class="validation-text"><strong>Status Dokumen:</strong> SAH &amp; TERVERIFIKASI DI DATABASE PC GP ANSOR KABUPATEN BOGOR</div> </div> </div> ` : ''}
+              ${useDocumentValidation ? ` <div class="validation-badge"> <div class="validation-qr"> <img src="${qrValidationImg}" alt="Validation QR" /> </div> <div class="validation-details"> <div class="validation-title">VALIDASI SISTEM KADERISASI</div> <div class="validation-text"><strong>Operator Cetak:</strong> ${skOperator}</div> <div class="validation-text"><strong>Waktu Cetak:</strong> ${skWaktuCetak}</div> <div class="validation-text"><strong>Status Dokumen:</strong> SAH &amp; TERVERIFIKASI DI DATABASE ${branding.organisasi.toUpperCase()}</div> </div> </div> ` : ''}
 
             </div>
 
