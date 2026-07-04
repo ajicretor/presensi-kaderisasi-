@@ -44,6 +44,9 @@ interface SuperAdminDashboardProps {
   presensi: Presensi[];
   tim: Tim[];
   branding: Branding;
+  supabaseConnected?: boolean;
+  isSyncing?: boolean;
+  onRetrySync?: (userOverride?: Tim) => Promise<void>;
 }
 
 export default function SuperAdminDashboard({
@@ -51,7 +54,10 @@ export default function SuperAdminDashboard({
   sesi,
   presensi,
   tim,
-  branding
+  branding,
+  supabaseConnected,
+  isSyncing,
+  onRetrySync
 }: SuperAdminDashboardProps) {
   // Local state for interactive filtering and inspection
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
@@ -385,9 +391,21 @@ export default function SuperAdminDashboard({
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <span className="bg-purple-500/25 border border-purple-400/30 text-purple-200 text-[9px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-              Pusat Kendali Nasional (Mabes)
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-purple-500/25 border border-purple-400/30 text-purple-200 text-[9px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
+                Pusat Kendali Nasional (Mabes)
+              </span>
+              {supabaseConnected !== undefined && (
+                <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                  supabaseConnected 
+                    ? 'bg-emerald-500/25 border-emerald-500/30 text-emerald-300' 
+                    : 'bg-rose-500/25 border-rose-500/30 text-rose-300'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${supabaseConnected ? 'bg-emerald-400' : 'bg-rose-400'} ${isSyncing ? 'animate-ping' : 'animate-pulse'}`} />
+                  <span>{supabaseConnected ? 'DATABASE TERKONEKSI' : 'DATABASE TERPUTUS'}</span>
+                </span>
+              )}
+            </div>
             <h2 className="text-2xl sm:text-3xl font-black mt-2 tracking-tight">
               Dashboard Super Admin Pusat
             </h2>
@@ -396,13 +414,26 @@ export default function SuperAdminDashboard({
             </p>
           </div>
           
-          <button
-            onClick={handleExportCSV}
-            className="self-start md:self-auto bg-emerald-500 hover:bg-emerald-600 text-slate-900 text-xs font-black px-5 py-3 rounded-xl flex items-center space-x-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Unduh Laporan Konsolidasi</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {onRetrySync && (
+              <button
+                onClick={() => onRetrySync()}
+                disabled={isSyncing}
+                className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-black px-5 py-3 rounded-xl flex items-center space-x-2 border border-white/20 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Database'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleExportCSV}
+              className="bg-emerald-500 hover:bg-emerald-600 text-slate-900 text-xs font-black px-5 py-3 rounded-xl flex items-center space-x-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Unduh Laporan Konsolidasi</span>
+            </button>
+          </div>
         </div>
       </div>
 

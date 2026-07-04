@@ -31,8 +31,8 @@ export default function TimTab({
   const defaultPerms = ['dash', 'scan', 'rekap'];
   const [perms, setPerms] = useState<string[]>(defaultPerms);
 
-  const isSuperAdminUser = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.role === 'Admin';
-  const canManage = currentUser.role === 'Admin' || currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true;
+  const isSuperAdminUser = currentUser.role === 'SuperAdmin' || (currentUser.role as string) === 'Super Admin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
+  const canManage = currentUser.role === 'Admin' || isSuperAdminUser;
 
   const openAddModal = () => {
     setEditIndex(null);
@@ -118,7 +118,16 @@ export default function TimTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-navy-850 text-xs text-slate-650 dark:text-slate-350 font-medium">
-            {tim.map((t, idx) => (
+            {tim
+              .map((t, idx) => ({ ...t, originalIndex: idx }))
+              .filter((t) => {
+                const isSuper = t.is_superadmin === true || t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.username === 'admin';
+                if (!isSuperAdminUser && isSuper) {
+                  return false;
+                }
+                return true;
+              })
+              .map((t) => (
               <tr key={t.username} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/10 transition align-middle">
                 <td className="p-4 font-bold text-slate-800 dark:text-white uppercase">
                   <div className="flex items-center space-x-2">
@@ -140,24 +149,24 @@ export default function TimTab({
                 </td>
                 <td className="p-4">
                   <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                    t.role === 'SuperAdmin' || t.is_superadmin 
+                    t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.is_superadmin || t.username === 'admin'
                       ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400'
                       : t.role === 'Admin' 
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' 
                         : 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400'
                   }`}>
-                    {t.role === 'SuperAdmin' || t.is_superadmin ? 'SUPER ADMIN' : t.role}
+                    {t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.is_superadmin || t.username === 'admin' ? 'SUPER ADMIN' : t.role}
                   </span>
                 </td>
                 <td className="p-4 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase">
-                  {t.is_superadmin || t.role === 'SuperAdmin' ? 'SEMUA (PUSAT)' : (t.kab_kota || '-')}
+                  {t.is_superadmin || t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.username === 'admin' ? 'SEMUA (PUSAT)' : (t.kab_kota || '-')}
                 </td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center space-x-1">
                     {/* Allow self-modification, or full actions if Admin */}
                     {(canManage || currentUser.username === t.username) && (
                       <button
-                        onClick={() => openEditModal(t, idx)}
+                        onClick={() => openEditModal(t, t.originalIndex)}
                         className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg border border-blue-100/60 transition"
                         title="Sunting Akses"
                       >
@@ -167,7 +176,7 @@ export default function TimTab({
 
                     {canManage && t.username !== 'admin' && (
                       <button
-                        onClick={() => onDeleteTim(idx)}
+                        onClick={() => onDeleteTim(t.originalIndex)}
                         className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-100/60 transition"
                         title="Hapus Operator"
                       >

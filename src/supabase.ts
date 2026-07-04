@@ -241,6 +241,28 @@ async function queryWithRetry(queryFn: () => PromiseLike<any> | any, retries = 3
   return lastResult;
 }
 
+function getMissingColumnFromErrorMessage(message: string): string | null {
+  if (!message) return null;
+  
+  // 1. Match: column "column_name" of relation ...
+  let match = message.match(/column "([^"]+)"/);
+  if (match && match[1]) return match[1];
+  
+  // 2. Match: Could not find column column_name in ...
+  match = message.match(/Could not find column ([a-zA-Z0-9_]+)/i);
+  if (match && match[1]) return match[1];
+
+  // 3. Match: column table.column_name does not exist
+  match = message.match(/column [a-zA-Z0-9_]+\.([a-zA-Z0-9_]+)/i);
+  if (match && match[1]) return match[1];
+
+  // 4. Match: column column_name does not exist (unquoted)
+  match = message.match(/column ([a-zA-Z0-9_]+) does not exist/i);
+  if (match && match[1]) return match[1];
+
+  return null;
+}
+
 // Robust upsert helper that can dynamically strip non-existent columns (perfect for old database schemas)
 async function robustUpsert(client: any, tableName: string, rows: any[]): Promise<boolean> {
   if (rows.length === 0) return true;
@@ -259,10 +281,9 @@ async function robustUpsert(client: any, tableName: string, rows: any[]): Promis
 
       console.warn(`Upsert to ${tableName} failed on attempt ${attempts + 1}:`, error);
 
-      if (error.code === '42703' && error.message) {
-        const match = error.message.match(/column "([^"]+)"/);
-        if (match && match[1]) {
-          const missingColumn = match[1];
+      if (error.message) {
+        const missingColumn = getMissingColumnFromErrorMessage(error.message);
+        if (missingColumn) {
           console.warn(`Detected missing column "${missingColumn}" in table "${tableName}". Retrying without this column...`);
           
           currentRows = currentRows.map(row => {
@@ -292,6 +313,19 @@ async function safeSelect(client: SupabaseClient, table: string, currentKabKota?
     if (filter && currentKabKota) {
       if (table === 'tim') {
         q = q.or(`kab_kota.eq."${currentKabKota}",kab_kota.is.null,kab_kota.eq.""`);
+      } else if (currentKabKota.toUpperCase() === 'KABUPATEN BOGOR') {
+        // Khusus login Bogor, tampilkan all data KABUPATEN BOGOR dan juga data PKD Cibungbulang (meskipun kab_kota kosong/lain)
+        if (table === 'peserta') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,nama.ilike.*cibungbulang*`);
+        } else if (table === 'sesi') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",materi.ilike.*cibungbulang*,instruktur.ilike.*cibungbulang*`);
+        } else if (table === 'presensi') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,materi.ilike.*cibungbulang*`);
+        } else if (table === 'rekap_kelulusan') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,nama.ilike.*cibungbulang*`);
+        } else {
+          q = q.eq('kab_kota', currentKabKota);
+        }
       } else {
         q = q.eq('kab_kota', currentKabKota);
       }
@@ -706,15 +740,18 @@ export async function syncTim(data: Tim[], currentKabKota?: string, isSuperAdmin
   try {
     if (data.length === 0) return true;
 
-    const rows = data.map(t => ({
-      username: t.username,
-      nama: t.nama,
-      role: t.role,
-      password: t.password || '',
-      permissions: t.permissions,
-      kab_kota: t.kab_kota || currentKabKota || '',
-      is_superadmin: t.is_superadmin || false
-    }));
+    const rows = data.map(t => {
+      const isSuper = t.is_superadmin === true || t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.username === 'admin';
+      return {
+        username: t.username,
+        nama: t.nama,
+        role: isSuper ? 'Super Admin' : t.role,
+        password: t.password || '',
+        permissions: t.permissions,
+        kab_kota: isSuper ? '' : (t.kab_kota || currentKabKota || ''),
+        is_superadmin: isSuper
+      };
+    });
 
     return await robustUpsert(client, 'tim', rows);
   } catch (e) {
@@ -792,10 +829,9 @@ export async function syncBranding(branding: Branding, currentKabKota?: string, 
 
       console.warn(`Sync branding attempt ${attempt + 1} failed:`, error);
 
-      if (error.code === '42703' && error.message) {
-        const match = error.message.match(/column "([^"]+)"/);
-        if (match) {
-          const missingCol = match[1];
+      if (error.message) {
+        const missingCol = getMissingColumnFromErrorMessage(error.message);
+        if (missingCol) {
           failedColumns.add(missingCol);
           delete currentPayload[missingCol];
 
@@ -946,15 +982,18 @@ export async function fetchAllFromSupabase(currentKabKota?: string, isSuperAdmin
         sesi: p.sesi,
         kab_kota: p.kab_kota || ''
       })),
-      tim: tim.map(t => ({
-        username: t.username,
-        nama: t.nama,
-        role: t.role as "Admin" | "Operator" | "SuperAdmin",
-        password: t.password,
-        permissions: t.permissions || [],
-        kab_kota: t.kab_kota || '',
-        is_superadmin: t.is_superadmin || false
-      })),
+      tim: tim.map(t => {
+        const isSuper = t.is_superadmin === true || t.is_superadmin === 'true' || t.role === 'SuperAdmin' || t.role === 'Super Admin' || t.username === 'admin';
+        return {
+          username: t.username,
+          nama: t.nama,
+          role: isSuper ? 'SuperAdmin' as const : (t.role === 'Admin' ? 'Admin' as const : 'Operator' as const),
+          password: t.password,
+          permissions: t.permissions || [],
+          kab_kota: isSuper ? '' : (t.kab_kota || ''),
+          is_superadmin: isSuper
+        };
+      }),
       branding: branding ? {
         appName: branding.appName || branding.appname || 'SI-ANSOR PRO v7.0',
         organisasi: branding.organisasi || '',

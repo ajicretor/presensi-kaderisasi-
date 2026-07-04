@@ -276,11 +276,169 @@ export default function App() {
           
           triggerAlert("Sinkronisasi Berhasil", "Data lokal Anda telah diunggah ke database Supabase Cloud yang kosong!", "success");
         } else {
-          // Jika database Cloud sudah memiliki data, gunakan data Cloud (Downward Sync)
-          setPeserta(data.peserta || []);
-          setSesi(data.sesi || []);
-          setPresensi(data.presensi || []);
-          setTim(data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM);
+          // Jika database Cloud sudah memiliki data, gunakan sinkronisasi rekonsiliasi dua arah (Bidirectional Sync)
+          
+          // 1. Rekonsiliasi Peserta (Kader)
+          const cloudPeserta = data.peserta || [];
+          const localPeserta = localDataParsed?.peserta || [];
+          const mergedPeserta = [...cloudPeserta];
+          const cloudPesertaMap = new Map<string, any>(cloudPeserta.map((p: any) => [p.id, p]));
+          const toUploadPeserta: any[] = [];
+
+          localPeserta.forEach((p: any) => {
+            const cloudP = cloudPesertaMap.get(p.id);
+            if (!cloudP) {
+              toUploadPeserta.push(p);
+              mergedPeserta.push(p);
+            } else {
+              const hasChanged = 
+                p.nama !== cloudP.nama ||
+                p.utusan !== cloudP.utusan ||
+                p.hp !== cloudP.hp ||
+                p.foto !== cloudP.foto ||
+                p.nilai_post_test !== cloudP.nilai_post_test ||
+                p.nilai_praktik !== cloudP.nilai_praktik ||
+                p.nilai_keaktifan !== cloudP.nilai_keaktifan ||
+                p.status_kelulusan !== cloudP.status_kelulusan ||
+                p.no_sertifikat !== cloudP.no_sertifikat ||
+                p.izin_menit !== cloudP.izin_menit ||
+                p.kab_kota !== cloudP.kab_kota;
+                
+              if (hasChanged) {
+                toUploadPeserta.push(p);
+                const idx = mergedPeserta.findIndex(item => item.id === p.id);
+                if (idx !== -1) {
+                  mergedPeserta[idx] = p;
+                }
+              }
+            }
+          });
+
+          if (toUploadPeserta.length > 0) {
+            console.log("Mengunggah data peserta hasil rekonsiliasi lokal:", toUploadPeserta);
+            await syncPeserta(toUploadPeserta, activeUser?.kab_kota, activeUser?.is_superadmin);
+          }
+          setPeserta(mergedPeserta);
+
+          // 2. Rekonsiliasi Sesi
+          const cloudSesi = data.sesi || [];
+          const localSesi = localDataParsed?.sesi || [];
+          const mergedSesi = [...cloudSesi];
+          const cloudSesiMap = new Map<string, any>(cloudSesi.map((s: any) => [`${s.num}_${s.kab_kota || ''}`, s]));
+          const toUploadSesi: any[] = [];
+
+          localSesi.forEach((s: any) => {
+            const sKabKota = s.kab_kota || activeUser?.kab_kota || '';
+            const key = `${s.num}_${sKabKota}`;
+            const cloudS = cloudSesiMap.get(key);
+            if (!cloudS) {
+              toUploadSesi.push(s);
+              mergedSesi.push(s);
+            } else {
+              const hasChanged = 
+                s.materi !== cloudS.materi ||
+                s.instruktur !== cloudS.instruktur ||
+                s.startTime !== cloudS.startTime ||
+                s.duration !== cloudS.duration ||
+                s.maxLate !== cloudS.maxLate ||
+                s.toiletLimit !== cloudS.toiletLimit ||
+                s.active !== cloudS.active ||
+                s.kab_kota !== cloudS.kab_kota;
+                
+              if (hasChanged) {
+                toUploadSesi.push(s);
+                const idx = mergedSesi.findIndex(item => item.num === s.num && (item.kab_kota || '') === sKabKota);
+                if (idx !== -1) {
+                  mergedSesi[idx] = s;
+                }
+              }
+            }
+          });
+
+          if (toUploadSesi.length > 0) {
+            console.log("Mengunggah data sesi hasil rekonsiliasi lokal:", toUploadSesi);
+            await syncSesi(toUploadSesi, activeUser?.kab_kota, activeUser?.is_superadmin);
+          }
+          setSesi(mergedSesi);
+
+          // 3. Rekonsiliasi Presensi
+          const cloudPresensi = data.presensi || [];
+          const localPresensi = localDataParsed?.presensi || [];
+          const mergedPresensi = [...cloudPresensi];
+          const cloudPresensiMap = new Map<string, any>(cloudPresensi.map((pr: any) => [`${pr.id}_${pr.sesi}_${pr.kab_kota || ''}`, pr]));
+          const toUploadPresensi: any[] = [];
+
+          localPresensi.forEach((pr: any) => {
+            const prKabKota = pr.kab_kota || activeUser?.kab_kota || '';
+            const key = `${pr.id}_${pr.sesi}_${prKabKota}`;
+            const cloudPr = cloudPresensiMap.get(key);
+            if (!cloudPr) {
+              toUploadPresensi.push(pr);
+              mergedPresensi.push(pr);
+            } else {
+              const hasChanged = 
+                pr.nama !== cloudPr.nama ||
+                pr.utusan !== cloudPr.utusan ||
+                pr.materi !== cloudPr.materi ||
+                pr.waktu !== cloudPr.waktu ||
+                pr.status !== cloudPr.status ||
+                pr.kab_kota !== cloudPr.kab_kota;
+                
+              if (hasChanged) {
+                toUploadPresensi.push(pr);
+                const idx = mergedPresensi.findIndex(item => item.id === pr.id && item.sesi === pr.sesi && (item.kab_kota || '') === prKabKota);
+                if (idx !== -1) {
+                  mergedPresensi[idx] = pr;
+                }
+              }
+            }
+          });
+
+          if (toUploadPresensi.length > 0) {
+            console.log("Mengunggah data presensi hasil rekonsiliasi lokal:", toUploadPresensi);
+            await syncPresensi(toUploadPresensi, activeUser?.kab_kota, activeUser?.is_superadmin);
+          }
+          setPresensi(mergedPresensi);
+
+          // 4. Rekonsiliasi Tim (Manajemen Operator & Level)
+          const cloudTim = data.tim || [];
+          const localTim = localDataParsed?.tim || [];
+          const mergedTim = [...cloudTim];
+          const cloudTimMap = new Map<string, any>(cloudTim.map((t: any) => [t.username.toLowerCase(), t]));
+          const toUploadTim: Tim[] = [];
+
+          localTim.forEach((t: Tim) => {
+            const usernameLower = t.username.toLowerCase();
+            const cloudT = cloudTimMap.get(usernameLower);
+            if (!cloudT) {
+              toUploadTim.push(t);
+              mergedTim.push(t);
+            } else {
+              const hasChanged = 
+                t.role !== cloudT.role || 
+                t.nama !== cloudT.nama ||
+                t.password !== cloudT.password ||
+                JSON.stringify(t.permissions || []) !== JSON.stringify(cloudT.permissions || []) ||
+                (t.is_superadmin !== undefined && t.is_superadmin !== cloudT.is_superadmin) ||
+                t.kab_kota !== cloudT.kab_kota;
+                
+              if (hasChanged) {
+                console.log(`Mendeteksi perubahan lokal untuk operator ${t.username}, mengunggah ke cloud:`, t);
+                toUploadTim.push(t);
+                const idx = mergedTim.findIndex(item => item.username.toLowerCase() === usernameLower);
+                if (idx !== -1) {
+                  mergedTim[idx] = t;
+                }
+              }
+            }
+          });
+
+          if (toUploadTim.length > 0) {
+            console.log("Mengunggah data operator/tim hasil rekonsiliasi lokal:", toUploadTim);
+            await syncTim(toUploadTim, activeUser?.kab_kota, activeUser?.is_superadmin);
+          }
+          const finalTim = mergedTim.length > 0 ? mergedTim : DEFAULT_TIM;
+          setTim(finalTim);
           
           let finalBranding = data.branding || branding;
           if (finalBranding && (
@@ -298,16 +456,16 @@ export default function App() {
 
           // Simpan data dari Cloud ke Local Storage agar sinkron
           const current = {
-            peserta: data.peserta || [],
-            sesi: data.sesi || [],
-            presensi: data.presensi || [],
-            tim: data.tim && data.tim.length > 0 ? data.tim : DEFAULT_TIM,
+            peserta: mergedPeserta,
+            sesi: mergedSesi,
+            presensi: mergedPresensi,
+            tim: finalTim,
             activeSesiId,
             branding: finalBranding,
           };
           safeStorage.setItem('SIANSOR_STATE_V7', JSON.stringify(current));
 
-          triggerAlert("Sync Berhasil", "Basis data disinkronkan sepenuhnya dari Supabase Cloud!", "success");
+          triggerAlert("Sinkronisasi Berhasil", "Basis data disinkronkan sepenuhnya (rekonsiliasi dua arah) dengan Supabase Cloud!", "success");
         }
       } else {
         setSupabaseConnected(false);
@@ -680,7 +838,15 @@ export default function App() {
     saveStateToLocalStorage({ tim: newList });
 
     if (supabaseConnected) {
-      await syncTim([tWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
+      const ok = await syncTim([tWithKabKota], currentUser?.kab_kota, currentUser?.is_superadmin);
+      if (!ok) {
+        triggerAlert(
+          "Penyimpanan Lokal Saja", 
+          `Data operator dengan Username ${t.username} berhasil disimpan di browser Anda, namun GAGAL diunggah ke database cloud. Pastikan tabel 'tim' sudah dibuat dan RLS dinonaktifkan di panel Supabase Anda.`, 
+          "warning"
+        );
+        return;
+      }
     }
     triggerAlert("Kru Operator Disimpan", `Data tim pelaksana dengan Username ${t.username} berhasil disimpan.`, "success");
   };
@@ -823,17 +989,23 @@ export default function App() {
         tim={tim}
         branding={branding}
         onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          const isUserSuperAdmin = user.role === 'SuperAdmin' || user.is_superadmin === true || user.username === 'admin';
+          const isUserSuperAdmin = user.role === 'SuperAdmin' || (user.role as string) === 'Super Admin' || user.is_superadmin === true || user.username === 'admin';
+          const normalizedUser: Tim = {
+            ...user,
+            role: isUserSuperAdmin ? 'SuperAdmin' as const : (user.role === 'Admin' ? 'Admin' as const : 'Operator' as const),
+            is_superadmin: isUserSuperAdmin,
+            kab_kota: isUserSuperAdmin ? '' : (user.kab_kota || '')
+          };
+          setCurrentUser(normalizedUser);
           if (isUserSuperAdmin) {
             setActiveTab('super-dash');
           } else {
             setActiveTab('dash');
           }
-          triggerAlert("Akses Diterima", `Ahlan Wa Sahlan, Sahabat ${user.nama}!`, "success");
+          triggerAlert("Akses Diterima", `Ahlan Wa Sahlan, Sahabat ${normalizedUser.nama}!`, "success");
           // Automatically trigger sync immediately upon login
           setTimeout(() => {
-            triggerSupabaseSync();
+            triggerSupabaseSync(normalizedUser);
           }, 100);
         }}
       />
@@ -841,7 +1013,7 @@ export default function App() {
   }
 
   // Permissions validation
-  const isSuperAdmin = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
+  const isSuperAdmin = currentUser.role === 'SuperAdmin' || (currentUser.role as string) === 'Super Admin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
   const isAdmin = currentUser.role === 'Admin' || isSuperAdmin;
   const perms = currentUser.permissions || [];
 
@@ -918,7 +1090,7 @@ export default function App() {
             </button>
           )}
 
-          {canDash && (
+          {!isSuperAdmin && canDash && (
             <button
               onClick={() => { setActiveTab('dash'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
@@ -932,7 +1104,7 @@ export default function App() {
             </button>
           )}
 
-          {canScan && (
+          {!isSuperAdmin && canScan && (
             <button
               onClick={() => { setActiveTab('scan'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
@@ -946,7 +1118,7 @@ export default function App() {
             </button>
           )}
 
-          {canSesi && (
+          {!isSuperAdmin && canSesi && (
             <button
               onClick={() => { setActiveTab('sesi'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
@@ -960,7 +1132,7 @@ export default function App() {
             </button>
           )}
 
-          {canPeserta && (
+          {!isSuperAdmin && canPeserta && (
             <button
               onClick={() => { setActiveTab('peserta'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
@@ -974,21 +1146,21 @@ export default function App() {
             </button>
           )}
 
-          {canRekap && (
+          {(isSuperAdmin || (!isSuperAdmin && canRekap)) && (
             <button
               onClick={() => { setActiveTab('rekap'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
                 activeTab === 'rekap' 
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10' 
+                  ? (isSuperAdmin ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10') 
                   : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
               }`}
             >
               <ScrollText className="w-4.5 h-4.5" />
-              <span>Rekap Presensi</span>
+              <span>{isSuperAdmin ? 'Rekap Data All Peserta' : 'Rekap Presensi'}</span>
             </button>
           )}
 
-          {canKelulusan && (
+          {!isSuperAdmin && canKelulusan && (
             <button
               onClick={() => { setActiveTab('kelulusan'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
@@ -1008,7 +1180,7 @@ export default function App() {
                 onClick={() => { setActiveTab('tim'); setIsSidebarOpen(false); }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
                   activeTab === 'tim' 
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10' 
+                    ? (isSuperAdmin ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10')
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }`}
               >
@@ -1020,7 +1192,7 @@ export default function App() {
                 onClick={() => { setActiveTab('custom'); setIsSidebarOpen(false); }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
                   activeTab === 'custom' 
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10' 
+                    ? (isSuperAdmin ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10')
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }`}
               >
@@ -1155,6 +1327,9 @@ export default function App() {
               presensi={presensi}
               tim={tim}
               branding={effectiveBranding}
+              supabaseConnected={supabaseConnected}
+              isSyncing={isSyncing}
+              onRetrySync={triggerSupabaseSync}
             />
           )}
 
@@ -1260,76 +1435,104 @@ export default function App() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-205 dark:border-navy-850 fixed bottom-0 inset-x-0 py-2.5 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-30 md:hidden overflow-x-auto custom-scrollbar">
-        <div className={`min-w-[420px] max-w-md mx-auto grid ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} gap-1 px-3 text-center whitespace-nowrap text-slate-500`}>
+        <div className={`min-w-[420px] max-w-md mx-auto grid ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-6'} gap-1 px-3 text-center whitespace-nowrap text-slate-500`}>
           
-          {isSuperAdmin && (
-            <button
-              onClick={() => setActiveTab('super-dash')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'super-dash' ? 'text-purple-500' : 'text-slate-400'}`}
-            >
-              <Activity className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Pusat</span>
-            </button>
-          )}
+          {isSuperAdmin ? (
+            <>
+              <button
+                onClick={() => setActiveTab('super-dash')}
+                className={`flex flex-col items-center space-y-1 ${activeTab === 'super-dash' ? 'text-purple-500' : 'text-slate-400'}`}
+              >
+                <Activity className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
+                <span className="text-[8px] font-black uppercase tracking-wider">Pusat</span>
+              </button>
 
-          {canDash && (
-            <button
-              onClick={() => setActiveTab('dash')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'dash' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <LayoutDashboard className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Dashboard</span>
-            </button>
-          )}
+              <button
+                onClick={() => setActiveTab('rekap')}
+                className={`flex flex-col items-center space-y-1 ${activeTab === 'rekap' ? 'text-purple-500' : 'text-slate-400'}`}
+              >
+                <ScrollText className="w-4.5 h-4.5 text-purple-400" />
+                <span className="text-[8px] font-black uppercase tracking-wider">Rekap All</span>
+              </button>
 
-          {canScan && (
-            <button
-              onClick={() => setActiveTab('scan')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'scan' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <QrCode className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Scan</span>
-            </button>
-          )}
+              <button
+                onClick={() => setActiveTab('tim')}
+                className={`flex flex-col items-center space-y-1 ${activeTab === 'tim' ? 'text-purple-500' : 'text-slate-400'}`}
+              >
+                <ShieldCheck className="w-4.5 h-4.5 text-purple-400" />
+                <span className="text-[8px] font-black uppercase tracking-wider">Tim</span>
+              </button>
 
-          {canSesi && (
-            <button
-              onClick={() => setActiveTab('sesi')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'sesi' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <Calendar className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Sesi</span>
-            </button>
-          )}
+              <button
+                onClick={() => setActiveTab('custom')}
+                className={`flex flex-col items-center space-y-1 ${activeTab === 'custom' ? 'text-purple-500' : 'text-slate-400'}`}
+              >
+                <Sliders className="w-4.5 h-4.5 text-purple-400" />
+                <span className="text-[8px] font-black uppercase tracking-wider">Kustom</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {canDash && (
+                <button
+                  onClick={() => setActiveTab('dash')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'dash' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <LayoutDashboard className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Dashboard</span>
+                </button>
+              )}
 
-          {canPeserta && (
-            <button
-              onClick={() => setActiveTab('peserta')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'peserta' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <Users className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Kader</span>
-            </button>
-          )}
+              {canScan && (
+                <button
+                  onClick={() => setActiveTab('scan')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'scan' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <QrCode className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Scan</span>
+                </button>
+              )}
 
-          {canRekap && (
-            <button
-              onClick={() => setActiveTab('rekap')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'rekap' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <ScrollText className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Rekap</span>
-            </button>
-          )}
+              {canSesi && (
+                <button
+                  onClick={() => setActiveTab('sesi')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'sesi' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <Calendar className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Sesi</span>
+                </button>
+              )}
 
-          {canKelulusan && (
-            <button
-              onClick={() => setActiveTab('kelulusan')}
-              className={`flex flex-col items-center space-y-1 ${activeTab === 'kelulusan' ? 'text-emerald-500' : 'text-slate-400'}`}
-            >
-              <Award className="w-4.5 h-4.5" />
-              <span className="text-[8px] font-black uppercase tracking-wider">Lulus</span>
-            </button>
+              {canPeserta && (
+                <button
+                  onClick={() => setActiveTab('peserta')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'peserta' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <Users className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Kader</span>
+                </button>
+              )}
+
+              {canRekap && (
+                <button
+                  onClick={() => setActiveTab('rekap')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'rekap' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <ScrollText className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Rekap</span>
+                </button>
+              )}
+
+              {canKelulusan && (
+                <button
+                  onClick={() => setActiveTab('kelulusan')}
+                  className={`flex flex-col items-center space-y-1 ${activeTab === 'kelulusan' ? 'text-emerald-500' : 'text-slate-400'}`}
+                >
+                  <Award className="w-4.5 h-4.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">Lulus</span>
+                </button>
+              )}
+            </>
           )}
 
         </div>
