@@ -246,8 +246,8 @@ export default function SesiTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150 dark:divide-navy-850 text-slate-650 dark:text-slate-350 font-medium">
-                {[...sesi].sort((a, b) => a.num - b.num).map(s => (
-                  <tr key={s.num} className={`hover:bg-slate-50/50 dark:hover:bg-navy-950/20 transition ${s.active ? 'bg-emerald-500/5 dark:bg-emerald-500/5' : ''}`}>
+                {[...sesi].sort((a, b) => a.num - b.num).map((s, idx) => (
+                  <tr key={`${s.num}_${s.kab_kota || 'default'}_${idx}`} className={`hover:bg-slate-50/50 dark:hover:bg-navy-950/20 transition ${s.active ? 'bg-emerald-500/5 dark:bg-emerald-500/5' : ''}`}>
                     <td className="p-3 font-mono font-bold text-navy-900 dark:text-white text-xs">Sesi {s.num}</td>
                     <td className="p-3">
                       <p className="font-extrabold text-slate-800 dark:text-white text-xs uppercase">{s.materi}</p>

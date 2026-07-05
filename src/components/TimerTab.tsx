@@ -495,8 +495,8 @@ export default function TimerTab({ sesi }: TimerTabProps) {
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3.5 py-2.5 rounded-xl text-xs font-black dark:text-white focus:outline-none"
                 >
                   <option value="custom">-- PRESET MANDIRI / CUSTOM --</option>
-                  {sesi.map(s => (
-                    <option key={s.num} value={s.num}>
+                  {sesi.map((s, idx) => (
+                    <option key={`${s.num}_${s.kab_kota || 'default'}_${idx}`} value={s.num}>
                       Sesi {s.num}: {s.materi || 'Materi Bebas'} ({s.instruktur || 'Tanpa Narasumber'})
                     </option>
                   ))}

@@ -430,8 +430,8 @@ export default function ScanTab({
                   onChange={(e) => setSelectedSesi(Number(e.target.value))}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-350 focus:outline-none"
                 >
-                  {sesi.map(s => (
-                    <option key={s.num} value={s.num}>Sesi {s.num}</option>
+                  {sesi.map((s, idx) => (
+                    <option key={`${s.num}_${s.kab_kota || 'default'}_${idx}`} value={s.num}>Sesi {s.num}</option>
                   ))}
                 </select>
               </div>

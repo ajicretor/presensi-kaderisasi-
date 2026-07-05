@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown, Settings, Printer } from 'lucide-react';
 import { Peserta, Branding } from '../types';
 
 const resizeImage = (base64Str: string, maxWidth = 160, maxHeight = 160): Promise<string> => {
@@ -46,6 +46,7 @@ interface PesertaTabProps {
   onSavePeserta: (p: Peserta, originalId?: string) => void;
   onDeletePeserta: (id: string) => void;
   onPrintQr: (id: string) => void;
+  onPrintAllQr: () => void;
 }
 
 export default function PesertaTab({
@@ -53,7 +54,8 @@ export default function PesertaTab({
   branding,
   onSavePeserta,
   onDeletePeserta,
-  onPrintQr
+  onPrintQr,
+  onPrintAllQr
 }: PesertaTabProps) {
   const [search, setSearch] = useState('');
   const [isOpenModal, setIsOpenModal] = useState(false);
@@ -263,6 +265,18 @@ export default function PesertaTab({
             <UserPlus className="w-4 h-4 text-white" />
             <span>TAMBAH PESERTA</span>
           </button>
+
+          {peserta.length > 0 && (
+            <button
+              type="button"
+              onClick={onPrintAllQr}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-3 rounded-xl text-xs flex items-center space-x-2 shadow-xs transition shrink-0 active:scale-[0.98]"
+              title="Cetak ID QR Card untuk semua peserta"
+            >
+              <Printer className="w-4.5 h-4.5 text-white" />
+              <span>CETAK SEMUA ID CARD</span>
+            </button>
+          )}
         </div>
       </div>
 

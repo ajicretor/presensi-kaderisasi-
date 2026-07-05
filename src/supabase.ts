@@ -94,14 +94,15 @@ export async function uploadPhotoToSupabase(id: string, base64Data: string): Pro
       });
 
     if (error) {
-      console.error("Error uploading photo to Supabase storage:", error);
+      console.warn("Storage upload warning (non-fatal, falling back to local base64 storage):", error);
+      console.warn("Tip: Run the updated SQL schema (Section 8) in your Supabase SQL Editor to automatically configure the storage bucket and its public access policies.");
       return null;
     }
 
     const { data: { publicUrl } } = client.storage.from(bucketName).getPublicUrl(fileName);
     return publicUrl;
   } catch (e) {
-    console.error("Exception in uploadPhotoToSupabase:", e);
+    console.warn("Exception in uploadPhotoToSupabase (non-fatal, falling back to local base64 storage):", e);
     return null;
   }
 }
@@ -254,6 +255,18 @@ ALTER TABLE presensi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE tim DISABLE ROW LEVEL SECURITY;
 ALTER TABLE branding DISABLE ROW LEVEL SECURITY;
 ALTER TABLE rekap_kelulusan DISABLE ROW LEVEL SECURITY;
+
+-- 8. Setup Supabase Storage untuk Foto Peserta
+-- Masukkan konfigurasi bucket 'peserta_photos' jika belum ada
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('peserta_photos', 'peserta_photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Kebijakan Akses (RLS) untuk Storage Bucket agar bisa di-upload & di-download publik
+CREATE POLICY "Allow public select" ON storage.objects FOR SELECT USING (bucket_id = 'peserta_photos');
+CREATE POLICY "Allow public insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'peserta_photos');
+CREATE POLICY "Allow public update" ON storage.objects FOR UPDATE USING (bucket_id = 'peserta_photos');
+CREATE POLICY "Allow public delete" ON storage.objects FOR DELETE USING (bucket_id = 'peserta_photos');
 `;
 
 // Helper function to query with retry in case of database cold start or statement timeout
@@ -408,6 +421,10 @@ async function safeSelect(client: SupabaseClient, table: string, currentKabKota?
   return await queryWithRetry(() => getQuery(false));
 }
 
+export function normalizeKabKota(val?: string | null): string {
+  return (val || '').trim().toUpperCase();
+}
+
 // Supabase fetching utilities with fallback behavior
 export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSuperAdmin?: boolean): Promise<boolean> {
   const client = getSupabaseClient();
@@ -416,8 +433,18 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
   try {
     if (data.length === 0) return true;
 
+    const targetKab = normalizeKabKota(currentKabKota);
+    // Filter data: regional admin should only sync their own peserta or empty ones
+    let filteredData = data;
+    if (!isSuperAdmin && targetKab !== '') {
+      filteredData = data.filter(p => {
+        const pKab = normalizeKabKota(p.kab_kota);
+        return pKab === '' || pKab === targetKab;
+      });
+    }
+
     // Handle image uploads to Supabase Storage first to shorten paths
-    for (const p of data) {
+    for (const p of filteredData) {
       if (p.foto && p.foto.startsWith('data:')) {
         const uploadedUrl = await uploadPhotoToSupabase(p.id, p.foto);
         if (uploadedUrl) {
@@ -429,7 +456,7 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
     const { data: existing, error: fetchError } = await safeSelect(client, 'peserta', currentKabKota, isSuperAdmin);
     if (fetchError) {
       console.warn("Error fetching existing peserta, falling back to full robust upsert:", fetchError);
-      const rows = data.map(p => ({
+      const rows = filteredData.map(p => ({
         id: p.id,
         nama: p.nama,
         utusan: p.utusan,
@@ -455,7 +482,7 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
     const localKeys = new Set<string>();
     const toUpsert: any[] = [];
 
-    data.forEach(p => {
+    filteredData.forEach(p => {
       localKeys.add(p.id);
       const match = existingMap.get(p.id);
       const rowKabKota = p.kab_kota || match?.kab_kota || currentKabKota || '';
@@ -470,7 +497,7 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
           match.nilai_keaktifan !== p.nilai_keaktifan ||
           match.status_kelulusan !== p.status_kelulusan ||
           match.no_sertifikat !== p.no_sertifikat ||
-          match.kab_kota !== rowKabKota ||
+          normalizeKabKota(match.kab_kota) !== normalizeKabKota(rowKabKota) ||
           (match.izin_menit !== undefined && match.izin_menit !== p.izin_menit);
 
         if (hasChanged) {
@@ -539,10 +566,20 @@ export async function syncSesi(data: Sesi[], currentKabKota?: string, isSuperAdm
   try {
     if (data.length === 0) return true;
 
+    const targetKab = normalizeKabKota(currentKabKota);
+    // Filter data: regional admin should only sync their own sessions or empty ones
+    let filteredData = data;
+    if (!isSuperAdmin && targetKab !== '') {
+      filteredData = data.filter(s => {
+        const sKab = normalizeKabKota(s.kab_kota);
+        return sKab === '' || sKab === targetKab;
+      });
+    }
+
     const { data: existing, error: fetchError } = await safeSelect(client, 'sesi', currentKabKota, isSuperAdmin);
     if (fetchError) {
       console.warn("Error fetching existing sesi, falling back to robust upsert:", fetchError);
-      const rows = data.map(s => ({
+      const rows = filteredData.map(s => ({
         num: s.num,
         materi: s.materi,
         instruktur: s.instruktur,
@@ -559,15 +596,15 @@ export async function syncSesi(data: Sesi[], currentKabKota?: string, isSuperAdm
     const existingList = existing || [];
     const existingMap = new Map<string, any>();
     existingList.forEach(item => {
-      existingMap.set(`${item.num}_${item.kab_kota || ''}`, item);
+      existingMap.set(`${item.num}_${normalizeKabKota(item.kab_kota)}`, item);
     });
 
     const localKeys = new Set<string>();
     const toUpsert: any[] = [];
 
-    data.forEach(s => {
+    filteredData.forEach(s => {
       const rowKabKota = s.kab_kota || currentKabKota || '';
-      const key = `${s.num}_${rowKabKota}`;
+      const key = `${s.num}_${normalizeKabKota(rowKabKota)}`;
       localKeys.add(key);
 
       const match = existingMap.get(key);
@@ -580,7 +617,7 @@ export async function syncSesi(data: Sesi[], currentKabKota?: string, isSuperAdm
           match.maxLate !== s.maxLate ||
           match.toiletLimit !== s.toiletLimit ||
           match.active !== s.active ||
-          match.kab_kota !== rowKabKota;
+          normalizeKabKota(match.kab_kota) !== normalizeKabKota(rowKabKota);
 
         if (hasChanged) {
           toUpsert.push({
@@ -644,11 +681,21 @@ export async function syncPresensi(data: Presensi[], currentKabKota?: string, is
   if (!client) return false;
 
   try {
+    const targetKab = normalizeKabKota(currentKabKota);
+    // Filter data: regional admin should only sync their own presensi or empty ones
+    let filteredData = data;
+    if (!isSuperAdmin && targetKab !== '') {
+      filteredData = data.filter(p => {
+        const pKab = normalizeKabKota(p.kab_kota);
+        return pKab === '' || pKab === targetKab;
+      });
+    }
+
     const { data: existing, error: fetchError } = await safeSelect(client, 'presensi', currentKabKota, isSuperAdmin);
     if (fetchError) {
       console.warn("Error fetching existing presensi, falling back to full insert:", fetchError);
-      if (data.length > 0) {
-        const dbRows = data.map(p => ({
+      if (filteredData.length > 0) {
+        const dbRows = filteredData.map(p => ({
           id: p.id,
           nama: p.nama,
           utusan: p.utusan,
@@ -667,16 +714,16 @@ export async function syncPresensi(data: Presensi[], currentKabKota?: string, is
     const existingList = existing || [];
     const existingMap = new Map<string, any>();
     existingList.forEach(item => {
-      existingMap.set(`${item.id}_${item.sesi}`, item);
+      existingMap.set(`${item.id}_${item.sesi}_${normalizeKabKota(item.kab_kota)}`, item);
     });
 
     const localKeys = new Set<string>();
     const toInsert: any[] = [];
     const toUpdate: any[] = [];
 
-    data.forEach(p => {
+    filteredData.forEach(p => {
       const rowKabKota = p.kab_kota || currentKabKota || '';
-      const key = `${p.id}_${p.sesi}`;
+      const key = `${p.id}_${p.sesi}_${normalizeKabKota(rowKabKota)}`;
       localKeys.add(key);
 
       const match = existingMap.get(key);
@@ -687,7 +734,7 @@ export async function syncPresensi(data: Presensi[], currentKabKota?: string, is
           match.materi !== p.materi ||
           match.waktu !== p.waktu ||
           match.status !== p.status ||
-          match.kab_kota !== rowKabKota;
+          normalizeKabKota(match.kab_kota) !== normalizeKabKota(rowKabKota);
 
         if (hasChanged) {
           toUpdate.push({
@@ -982,7 +1029,34 @@ export async function fetchAllFromSupabase(currentKabKota?: string, isSuperAdmin
     
     let tim = [];
     if (!resTim.error) {
-      tim = resTim.data || [];
+      const rawTim = resTim.data || [];
+      const timMap = new Map<string, any>();
+      const sortedRawTim = [...rawTim].sort((a, b) => {
+        const aKab = a.kab_kota || '';
+        const bKab = b.kab_kota || '';
+        if (currentKabKota) {
+          if (aKab.toLowerCase() === currentKabKota.toLowerCase() && bKab.toLowerCase() !== currentKabKota.toLowerCase()) return 1;
+          if (bKab.toLowerCase() === currentKabKota.toLowerCase() && aKab.toLowerCase() !== currentKabKota.toLowerCase()) return -1;
+        }
+        return 0;
+      });
+
+      sortedRawTim.forEach((t: any) => {
+        if (t.username) {
+          const usernameLower = t.username.trim().toLowerCase();
+          const isSuper = t.is_superadmin === true || t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || usernameLower === 'admin';
+          timMap.set(usernameLower, {
+            username: usernameLower,
+            nama: t.nama || '',
+            role: isSuper ? 'Super Admin' : (t.role || 'Operator'),
+            password: t.password || '',
+            permissions: t.permissions || [],
+            kab_kota: isSuper ? '' : (t.kab_kota || ''),
+            is_superadmin: isSuper
+          });
+        }
+      });
+      tim = Array.from(timMap.values());
     } else {
       console.warn("Table 'tim' missing or errored in database, using local fallback:", resTim.error);
     }

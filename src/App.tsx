@@ -139,9 +139,25 @@ export default function App() {
       try {
         const parsed = JSON.parse(localData);
         if (parsed.peserta) setPeserta(parsed.peserta);
-        if (parsed.sesi) setSesi(parsed.sesi);
+        if (parsed.sesi) {
+          const sesiMap = new Map<number, any>();
+          parsed.sesi.forEach((s: any) => {
+            if (s && s.num) {
+              sesiMap.set(s.num, s);
+            }
+          });
+          setSesi(Array.from(sesiMap.values()));
+        }
         if (parsed.presensi) setPresensi(parsed.presensi);
-        if (parsed.tim) setTim(parsed.tim);
+        if (parsed.tim) {
+          const timMap = new Map<string, any>();
+          parsed.tim.forEach((t: any) => {
+            if (t && t.username) {
+              timMap.set(t.username.toLowerCase(), t);
+            }
+          });
+          setTim(Array.from(timMap.values()));
+        }
         if (parsed.activeSesiId) setActiveSesiId(parsed.activeSesiId);
         if (parsed.branding) {
           let b = parsed.branding;
@@ -330,16 +346,16 @@ export default function App() {
           const cloudSesi = data.sesi || [];
           const localSesi = localDataParsed?.sesi || [];
           const mergedSesi = [...cloudSesi];
-          const cloudSesiMap = new Map<string, any>(cloudSesi.map((s: any) => [`${s.num}_${s.kab_kota || ''}`, s]));
+          const cloudSesiMap = new Map<number, any>(cloudSesi.map((s: any) => [s.num, s]));
           const toUploadSesi: any[] = [];
 
           localSesi.forEach((s: any) => {
+            const cloudS = cloudSesiMap.get(s.num);
             const sKabKota = s.kab_kota || activeUser?.kab_kota || '';
-            const key = `${s.num}_${sKabKota}`;
-            const cloudS = cloudSesiMap.get(key);
+            const updatedS = { ...s, kab_kota: sKabKota };
             if (!cloudS) {
-              toUploadSesi.push(s);
-              mergedSesi.push(s);
+              toUploadSesi.push(updatedS);
+              mergedSesi.push(updatedS);
             } else {
               const hasChanged = 
                 s.materi !== cloudS.materi ||
@@ -348,14 +364,13 @@ export default function App() {
                 s.duration !== cloudS.duration ||
                 s.maxLate !== cloudS.maxLate ||
                 s.toiletLimit !== cloudS.toiletLimit ||
-                s.active !== cloudS.active ||
-                s.kab_kota !== cloudS.kab_kota;
+                s.active !== cloudS.active;
                 
               if (hasChanged) {
-                toUploadSesi.push(s);
-                const idx = mergedSesi.findIndex(item => item.num === s.num && (item.kab_kota || '') === sKabKota);
+                toUploadSesi.push(updatedS);
+                const idx = mergedSesi.findIndex(item => item.num === s.num);
                 if (idx !== -1) {
-                  mergedSesi[idx] = s;
+                  mergedSesi[idx] = updatedS;
                 }
               }
             }
@@ -443,7 +458,15 @@ export default function App() {
             console.log("Mengunggah data operator/tim hasil rekonsiliasi lokal:", toUploadTim);
             await syncTim(toUploadTim, activeUser?.kab_kota, activeUser?.is_superadmin);
           }
-          const finalTim = mergedTim.length > 0 ? mergedTim : DEFAULT_TIM;
+          
+          // Deduplicate finalTim by username to guarantee no duplicates
+          const finalTimMap = new Map<string, Tim>();
+          mergedTim.forEach((t: Tim) => {
+            if (t.username) {
+              finalTimMap.set(t.username.toLowerCase(), t);
+            }
+          });
+          const finalTim = Array.from(finalTimMap.values()).length > 0 ? Array.from(finalTimMap.values()) : DEFAULT_TIM;
           setTim(finalTim);
           
           let finalBranding = data.branding || branding;
@@ -1037,6 +1060,189 @@ export default function App() {
     }
   };
 
+  const handlePrintAllQr = async () => {
+    if (displayedPeserta.length === 0) {
+      triggerAlert("Cetak Gagal", "Tidak ada data peserta untuk dicetak.", "danger");
+      return;
+    }
+    
+    try {
+      const cardsData = await Promise.all(
+        displayedPeserta.map(async (p) => {
+          try {
+            const qrData = await QRCode.toDataURL(p.id, { margin: 1, width: 150 });
+            return {
+              ...p,
+              qrDataUrl: qrData
+            };
+          } catch (err) {
+            console.error("Failed to generate QR for", p.id, err);
+            return {
+              ...p,
+              qrDataUrl: ''
+            };
+          }
+        })
+      );
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        triggerAlert("Popup Diblokir", "Harap izinkan popup di browser Anda untuk mencetak ID Card.", "warning");
+        return;
+      }
+
+      const cardsHtml = cardsData.map((k) => {
+        const photoHtml = k.foto 
+          ? `<img class="photo" src="${k.foto}" />` 
+          : `<div class="initial-photo" style="background: white; padding: 4px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; border-radius: 50%;">${effectiveBranding.logo}</div>`;
+        
+        return `
+          <div class="card">
+            <div class="photo-container">
+              ${photoHtml}
+            </div>
+            <div class="name">${k.nama}</div>
+            <div class="sub">${effectiveBranding.delegationType || 'PAC'} ${k.utusan}</div>
+            ${k.qrDataUrl ? `<img class="qr" src="${k.qrDataUrl}" />` : `<div style="height:140px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#ef4444;">Gagal membuat QR</div>`}
+            <div class="id-text">${k.id}</div>
+          </div>
+        `;
+      }).join('');
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Cetak_Semua_ID_Card_${effectiveBranding.cabang || 'Kader'}</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: system-ui, -apple-system, sans-serif;
+                background: #f8fafc;
+              }
+              .container-title {
+                margin-bottom: 25px;
+                text-align: center;
+                font-size: 18px;
+                font-weight: 800;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+              }
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 25px;
+                justify-items: center;
+              }
+              .card {
+                border: 1px solid #e2e8f0;
+                padding: 25px;
+                border-radius: 20px;
+                text-align: center;
+                width: 280px;
+                box-sizing: border-box;
+                background: white;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+                page-break-inside: avoid;
+                break-inside: avoid;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                position: relative;
+              }
+              .photo-container {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 15px;
+              }
+              .photo {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #e2e8f0;
+              }
+              .initial-photo {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                border: 1px solid #e2e8f0;
+                background: #f1f5f9;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto;
+              }
+              .name {
+                font-size: 15px;
+                font-weight: 800;
+                margin-bottom: 3px;
+                text-transform: uppercase;
+                color: #0f172a;
+                line-height: 1.2;
+              }
+              .sub {
+                font-size: 11px;
+                font-weight: 600;
+                color: #475569;
+                margin-bottom: 15px;
+                text-transform: uppercase;
+              }
+              img.qr {
+                width: 140px;
+                height: 140px;
+                display: block;
+              }
+              .id-text {
+                font-family: monospace;
+                font-size: 10px;
+                margin-top: 12px;
+                color: #64748b;
+                letter-spacing: 0.05em;
+              }
+              @media print {
+                body {
+                  background: white;
+                  padding: 0;
+                }
+                .container-title {
+                  display: none;
+                }
+                .grid {
+                  gap: 15px;
+                  grid-template-columns: repeat(2, 1fr);
+                }
+                .card {
+                  border: 1.5px solid #cbd5e1;
+                  box-shadow: none;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container-title">DAFTAR KADERISASI CARD ID - ${effectiveBranding.cabang || 'KADER'}</div>
+            <div class="grid">
+              ${cardsHtml}
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.close();
+                }, 500);
+              };
+            <\/script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (err) {
+      console.error("Bulk print error:", err);
+      triggerAlert("Kesalahan Cetak", "Terjadi kesalahan saat memproses data cetak.", "danger");
+    }
+  };
+
   // Compute effective branding based on who is logged in
   const effectiveBranding = React.useMemo(() => {
     let result = { ...branding };
@@ -1333,17 +1539,19 @@ export default function App() {
             </button>
           )}
 
-          <button
-            onClick={() => { setActiveTab('timer'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
-              activeTab === 'timer' 
-                ? (isSuperAdmin ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10') 
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-            }`}
-          >
-            <Clock className="w-4.5 h-4.5" />
-            <span>Waktu Digital</span>
-          </button>
+          {!isSuperAdmin && (
+            <button
+              onClick={() => { setActiveTab('timer'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
+                activeTab === 'timer' 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10' 
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+              }`}
+            >
+              <Clock className="w-4.5 h-4.5" />
+              <span>Waktu Digital</span>
+            </button>
+          )}
 
           {isAdmin && (
             <>
@@ -1561,6 +1769,7 @@ export default function App() {
               onSavePeserta={handleSavePeserta}
               onDeletePeserta={handleDeletePeserta}
               onPrintQr={handleOpenPrintQr}
+              onPrintAllQr={handlePrintAllQr}
             />
           )}
 

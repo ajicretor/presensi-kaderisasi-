@@ -39,8 +39,17 @@ export default function KelulusanTab({
   currentUserPermissions,
   currentUserName
 }: KelulusanTabProps) {
-  // Calculates total session duration
-  const sortedSesi = [...sesi].sort((a,b) => a.num - b.num);
+  // Calculates total session duration, deduplicating by num to avoid React key collision and column duplication under global filter views
+  const sortedSesi = React.useMemo(() => {
+    const uniqueMap = new Map<number, Sesi>();
+    [...sesi].sort((a, b) => a.num - b.num).forEach(s => {
+      if (!uniqueMap.has(s.num)) {
+        uniqueMap.set(s.num, s);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [sesi]);
+
   const totalDuration = sortedSesi.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
   const [search, setSearch] = useState('');
