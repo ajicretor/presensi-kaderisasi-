@@ -1030,23 +1030,37 @@ export default function App() {
 
   // --- SYSTEM RESET ---
   const handleResetCache = () => {
-    triggerConfirm("Reset Data Lokal", "Apakah Anda yakin ingin mengatur ulang cache aplikasi dan mengembalikannya ke demo bawaan?", () => {
-      safeStorage.removeItem('SIANSOR_STATE_V7');
-      safeStorage.removeItem('SIANSOR_SUPABASE_URL');
-      safeStorage.removeItem('SIANSOR_SUPABASE_KEY');
-      
-      setPeserta(DEFAULT_PESERTA);
-      setSesi(DEFAULT_SESI);
-      setPresensi(DEFAULT_PRESENSI);
-      setTim(DEFAULT_TIM);
-      setBranding(DEFAULT_BRANDING);
-      setActiveSesiId(1);
-      setSupabaseConnected(false);
-      setSupabaseMode('none');
-      setCurrentUser(null);
-      resetSupabaseClient();
-      triggerAlert("Reset Berhasil", "Basis data lokal sukses dikembalikan ke kondisi awal.", "success");
-    });
+    triggerConfirm(
+      "RESET DATA LOKAL", 
+      "Apakah Anda yakin ingin mengatur ulang cache aplikasi di browser? Tindakan ini hanya menghapus data lokal (cache) di browser Anda. Seluruh data yang sudah tersimpan di database cloud (Supabase) tetap aman dan tidak akan terhapus.", 
+      () => {
+        safeStorage.removeItem('SIANSOR_STATE_V7');
+        safeStorage.removeItem('SIANSOR_SUPABASE_URL');
+        safeStorage.removeItem('SIANSOR_SUPABASE_KEY');
+        safeStorage.removeItem('SIANSOR_ID_PROV');
+        safeStorage.removeItem('SIANSOR_ID_KAB');
+        safeStorage.removeItem('SIANSOR_ID_KEC');
+        safeStorage.removeItem('SIANSOR_ID_ANGKATAN');
+        safeStorage.removeItem('SIANSOR_ID_TGL');
+        safeStorage.removeItem('SIANSOR_AI_EVALUATED');
+        
+        setPeserta(DEFAULT_PESERTA);
+        setSesi(DEFAULT_SESI);
+        setPresensi(DEFAULT_PRESENSI);
+        setTim(DEFAULT_TIM);
+        setBranding(DEFAULT_BRANDING);
+        setActiveSesiId(1);
+        setSupabaseConnected(false);
+        setSupabaseMode('none');
+        setCurrentUser(null);
+        resetSupabaseClient();
+        triggerAlert(
+          "Reset Berhasil", 
+          "Cache lokal di browser Anda telah berhasil dibersihkan! Data Anda yang tersimpan di database cloud tetap aman dan utuh.", 
+          "success"
+        );
+      }
+    );
   };
 
   // --- PRINT ID QR ---
