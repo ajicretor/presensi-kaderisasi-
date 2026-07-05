@@ -2881,8 +2881,22 @@ export default function KelulusanTab({
                         {skLogo ? (
                           <img src={skLogo} className="w-full h-full object-contain" alt="Kop Logo" />
                         ) : (
-                          <div className="text-center p-1">
-                            <span className="text-[7px] text-slate-400 font-bold">Logo GP Ansor (Default)</span>
+                          <div className="p-1 w-full h-full flex items-center justify-center">
+                            <svg viewBox="0 0 120 140" className="w-8 h-9 shrink-0" xmlns="http://www.w3.org/2000/svg">
+                              <polygon points="60,5 115,115 5,115" fill="#008a3c" />
+                              <polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" strokeWidth="2" />
+                              <path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" />
+                              <circle cx="60" cy="72" r="4.5" fill="#ffffff" />
+                              <line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" strokeWidth="1.5" />
+                              <line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" strokeWidth="1.5" />
+                              <line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                              <line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" strokeWidth="1.5" />
+                              <line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                              <line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" strokeWidth="1.2" />
+                              <line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" stroke-width="1.2" />
+                              <line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" stroke-width="1.2" />
+                              <polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" />
+                            </svg>
                           </div>
                         )}
                       </div>

@@ -93,7 +93,7 @@ export default function TimTab({
           <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase font-bold">Kelola hak akses akun operator lapangan pendamping.</p>
         </div>
         
-        {canManage && (
+        {isSuperAdminUser && (
           <button
             onClick={openAddModal}
             className="bg-slate-900 dark:bg-slate-950 hover:bg-slate-800 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center space-x-2 shadow-sm transition active:scale-[0.98]"
@@ -155,7 +155,11 @@ export default function TimTab({
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' 
                         : 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400'
                   }`}>
-                    {t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.is_superadmin || t.username === 'admin' ? 'SUPER ADMIN' : t.role}
+                    {t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.is_superadmin || t.username === 'admin'
+                      ? 'SUPER ADMIN'
+                      : t.role === 'Admin'
+                        ? 'ADMIN WILAYAH'
+                        : 'OPERATOR'}
                   </span>
                 </td>
                 <td className="p-4 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase">

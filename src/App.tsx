@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Menu,
+  Clock,
   Database,
   CloudLightning,
   XCircle,
@@ -21,10 +22,11 @@ import {
   AlertTriangle,
   Printer,
   RefreshCw,
-  Activity
+  Activity,
+  GraduationCap
 } from 'lucide-react';
 
-import { Peserta, Sesi, Presensi, Tim, Branding, SystemState } from './types';
+import { Peserta, Sesi, Presensi, Tim, Branding, SystemState, Instruktur } from './types';
 import { safeStorage } from './utils/storage';
 import {
   getSupabaseClient,
@@ -54,6 +56,8 @@ import KelulusanTab from './components/KelulusanTab';
 import TimTab from './components/TimTab';
 import CustomTab from './components/CustomTab';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
+import InstrukturTab from './components/InstrukturTab';
+import TimerTab from './components/TimerTab';
 import { INDONESIA_REGIONS } from './utils/regions';
 
 // DEFAULT STATIC DEMO DATA FOR OFFLINE-FALLBACK
@@ -70,7 +74,7 @@ const DEFAULT_BRANDING: Branding = {
   organisasi: "PIMPINAN PUSAT GP ANSOR (NASIONAL)",
   cabang: "NASIONAL",
   totalSesi: 14,
-  logo: `<svg class="w-11 h-11" viewBox="0 0 200 215" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ansorGrad" x1="20" y1="180" x2="180" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d8ff8" /><stop offset="40%" stop-color="#06b6d4" /><stop offset="70%" stop-color="#0d9488" /><stop offset="100%" stop-color="#10b981" /></linearGradient></defs><circle cx="100" cy="100" r="85" fill="url(#ansorGrad)" opacity="0.05" /><path d="M 44 146 C 18 114 18 64 54 34 C 80 12 120 12 146 34" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" /><path d="M 33 134 C 10 98 10 48 46 18 C 72 -5 128 -5 154 18" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" opacity="0.7" /><path d="M 146 34 C 172 64 172 114 146 146 C 136 156 122 165 100 168" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" /><g stroke="url(#ansorGrad)" stroke-width="3.5" stroke-linecap="round" opacity="0.9"><line x1="100" y1="95" x2="100" y2="60" /><line x1="100" y1="95" x2="130" y2="65" /><line x1="100" y1="95" x2="140" y2="82" /><line x1="100" y1="95" x2="140" y2="108" /><line x1="100" y1="95" x2="130" y2="125" /><line x1="100" y1="95" x2="70" y2="65" /><line x1="100" y1="95" x2="60" y2="82" /><line x1="100" y1="95" x2="60" y2="108" /><line x1="100" y1="95" x2="70" y2="125" /></g><circle cx="100" cy="95" r="42" stroke="white" stroke-width="3" fill="none" opacity="0.3" /><circle cx="100" cy="78" r="9.5" fill="url(#ansorGrad)" /><circle cx="74" cy="94" r="8" fill="url(#ansorGrad)" /><circle cx="126" cy="94" r="8" fill="url(#ansorGrad)" /><path d="M 100 90 C 96 90, 84 98, 74 104 C 60 112, 50 116, 50 116 C 50 116, 62 110, 74 106 C 86 102, 92 108, 92 118 L 92 142 C 92 148, 88 152, 82 156 C 72 161, 58 162, 58 162 C 58 162, 74 161, 86 156 C 94 152, 100 144, 100 142 C 100 144, 106 152, 114 156 C 126 161, 142 162, 142 162 C 142 162, 128 161, 118 156 C 112 152, 108 148, 108 142 L 108 118 C 108 108, 114 102, 126 106 C 138 110, 150 116, 150 116 C 150 116, 140 112, 126 104 C 116 98, 104 90, 100 90 Z" fill="url(#ansorGrad)" /><path d="M 52 152 C 65 168, 82 173, 100 173 C 118 173, 135 168, 148 152" stroke="url(#ansorGrad)" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M 64 163 C 74 177, 86 181, 100 181 C 114 181, 126 177, 136 163" stroke="url(#ansorGrad)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 76 172 C 83 186, 91 189, 100 189 C 109 189, 117 186, 124 172" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 88 181 C 92 192, 96 194, 100 194 C 104 194, 108 192, 112 181" stroke="url(#ansorGrad)" stroke-width="2" stroke-linecap="round" fill="none" /><g transform="translate(100, 32) scale(0.9)"><path d="M -25 15 C -5 -5, 20 -20, 35 -15 C 20 -5, 10 5, 2 20 C -5 15, -15 12, -25 15 Z" fill="url(#ansorGrad)" /><path d="M 2 20 C 5 10, 18 5, 28 5 C 18 12, 12 20, 10 32 C 6 27, 4 23, 2 20 Z" fill="url(#ansorGrad)" /><path d="M -15 10 C -25 2, -32 -5, -40 2 C -32 8, -25 12, -15 10 Z" fill="url(#ansorGrad)" /></g></svg>`,
+  logo: `<svg class="w-11 h-11" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="60,5 115,115 5,115" fill="#008a3c" /><polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" stroke-width="2" /><path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" /><circle cx="60" cy="72" r="4.5" fill="#ffffff" /><line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" stroke-width="1.5" /><line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" stroke-width="1.5" /><line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" stroke-width="1.2" /><polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" /><polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" /><polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" /><polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" /><polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" /><polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" /><polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" /><polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" /><polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" /><rect x="15" y="103" width="90" height="15" fill="#008a3c" /><text x="60" y="115" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="900" font-size="12" fill="#ffffff" text-anchor="middle" letter-spacing="1">ANSOR</text></svg>`,
   themeColor: "emerald",
   delegationType: "PAC"
 };
@@ -80,7 +84,7 @@ const DEFAULT_PRESENSI: Presensi[] = [];
 
 export default function App() {
   // Navigation & authentication states
-  const [activeTab, setActiveTab] = useState<'dash' | 'super-dash' | 'scan' | 'sesi' | 'peserta' | 'rekap' | 'kelulusan' | 'tim' | 'custom'>('dash');
+  const [activeTab, setActiveTab] = useState<'dash' | 'super-dash' | 'scan' | 'sesi' | 'peserta' | 'rekap' | 'kelulusan' | 'tim' | 'custom' | 'instruktur' | 'timer'>('dash');
   const [currentUser, setCurrentUser] = useState<Tim | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -182,6 +186,8 @@ export default function App() {
 
     initConnection();
   }, []);
+
+
 
   const triggerSupabaseSync = async (userOverride?: Tim) => {
     setIsSyncing(true);
@@ -574,6 +580,75 @@ export default function App() {
     safeStorage.setItem('SIANSOR_STATE_V7', JSON.stringify(current));
   };
 
+  // --- ACTIONS: INSTRUKTUR & MATERI ---
+  const handleRenameInstructor = async (oldName: string, newName: string) => {
+    if (!oldName.trim() || !newName.trim() || oldName === newName) return;
+    
+    const updatedSessions = sesi.map(s => {
+      const rawInstruktur = s.instruktur ? s.instruktur.trim() : "";
+      if (rawInstruktur.toLowerCase() === oldName.trim().toLowerCase()) {
+        return { ...s, instruktur: newName.trim() };
+      }
+      return s;
+    });
+    
+    setSesi(updatedSessions);
+    saveStateToLocalStorage({ sesi: updatedSessions });
+    
+    if (supabaseConnected) {
+      const changedSessions = updatedSessions.filter((s, idx) => {
+        const rawInstruktur = sesi[idx].instruktur ? sesi[idx].instruktur.trim() : "";
+        return rawInstruktur.toLowerCase() === oldName.trim().toLowerCase();
+      });
+      if (changedSessions.length > 0) {
+        await syncSesi(changedSessions, currentUser?.kab_kota, currentUser?.is_superadmin);
+      }
+    }
+    
+    triggerAlert(
+      "Nama Instruktur Diperbarui", 
+      `Nama narasumber "${oldName}" berhasil diubah menjadi "${newName}" pada seluruh sesi terkait di database.`, 
+      "success"
+    );
+  };
+
+  const handleDeleteInstructorFromSessions = async (instructorName: string) => {
+    triggerConfirm(
+      "Kosongkan Instruktur?",
+      `Apakah Anda yakin ingin menghapus nama narasumber "${instructorName}" dari seluruh sesi terkait?`,
+      async (yes) => {
+        if (!yes) return;
+        
+        const updatedSessions = sesi.map(s => {
+          const rawInstruktur = s.instruktur ? s.instruktur.trim() : "";
+          if (rawInstruktur.toLowerCase() === instructorName.trim().toLowerCase()) {
+            return { ...s, instruktur: "" }; // Reset to empty
+          }
+          return s;
+        });
+        
+        setSesi(updatedSessions);
+        saveStateToLocalStorage({ sesi: updatedSessions });
+        
+        if (supabaseConnected) {
+          const changedSessions = updatedSessions.filter((s, idx) => {
+            const rawInstruktur = sesi[idx].instruktur ? sesi[idx].instruktur.trim() : "";
+            return rawInstruktur.toLowerCase() === instructorName.trim().toLowerCase();
+          });
+          if (changedSessions.length > 0) {
+            await syncSesi(changedSessions, currentUser?.kab_kota, currentUser?.is_superadmin);
+          }
+        }
+        
+        triggerAlert(
+          "Instruktur Dikosongkan", 
+          `Narasumber "${instructorName}" telah berhasil dihapus dari seluruh sesi terkait di database.`, 
+          "success"
+        );
+      }
+    );
+  };
+
   const triggerAlert = (title: string, message: string, type: 'success' | 'warning' | 'danger') => {
     setCustomAlert({ isOpen: true, title, message, type });
   };
@@ -964,30 +1039,132 @@ export default function App() {
 
   // Compute effective branding based on who is logged in
   const effectiveBranding = React.useMemo(() => {
-    if (!currentUser) return branding;
-    const isSuper = currentUser.role === 'SuperAdmin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
-    if (isSuper) {
-      return {
+    let result = { ...branding };
+    const isSuper = currentUser?.role === 'SuperAdmin' || currentUser?.is_superadmin === true || currentUser?.username === 'admin';
+    if (!currentUser) {
+      result = branding;
+    } else if (isSuper) {
+      result = {
         ...branding,
         organisasi: "PIMPINAN PUSAT GP ANSOR (NASIONAL)",
         cabang: "NASIONAL"
       };
     } else if (currentUser.kab_kota) {
-      return {
+      result = {
         ...branding,
         organisasi: `PC GP ANSOR ${currentUser.kab_kota.toUpperCase()}`,
         cabang: currentUser.kab_kota.toUpperCase()
       };
     }
-    return branding;
+
+    if (!result.logo || result.logo.includes('ansorGrad') || result.logo.includes('blueTeal') || result.logo.includes('stroke-width="9"') || result.logo.includes('M30 40') || result.logo.includes('viewBox="0 0 120 120"') || result.logo.includes('viewBox="0 0 200 215"')) {
+      result.logo = DEFAULT_BRANDING.logo;
+    }
+
+    return result;
   }, [currentUser, branding]);
+
+  // Update browser document title based on login status and active branding
+  useEffect(() => {
+    if (!currentUser) {
+      document.title = "SI-ANSOR PRO V7.0 - PIMPINAN PUSAT GP ANSOR (NASIONAL)";
+    } else {
+      document.title = `${effectiveBranding.appName} - ${effectiveBranding.organisasi}`;
+    }
+  }, [currentUser, effectiveBranding]);
+
+  // Permissions validation
+  const isSuperAdmin = currentUser ? (currentUser.role === 'SuperAdmin' || (currentUser.role as string) === 'Super Admin' || currentUser.is_superadmin === true || currentUser.username === 'admin') : false;
+  const isAdmin = currentUser ? (currentUser.role === 'Admin' || isSuperAdmin) : false;
+  const perms = currentUser ? (currentUser.permissions || []) : [];
+
+  const canDash = isAdmin || perms.includes('dash');
+  const canScan = isAdmin || perms.includes('scan');
+  const canSesi = isAdmin || perms.includes('sesi'); // Tambah Sesi permission check
+  const canPeserta = isAdmin || perms.includes('peserta');
+  const canRekap = isAdmin || perms.includes('rekap'); // Rekap Data permission check
+  const canKelulusan = isAdmin || perms.includes('kelulusan');
+
+  const displayedPeserta = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (isSuperAdmin) {
+      return selectedKabKotaFilter !== 'all'
+        ? peserta.filter(p => p.kab_kota === selectedKabKotaFilter)
+        : peserta;
+    }
+    const userKabKota = currentUser.kab_kota || '';
+    if (userKabKota.toUpperCase() === 'KABUPATEN BOGOR') {
+      return peserta.filter(p => {
+        const matchesBogor = p.kab_kota?.toUpperCase() === 'KABUPATEN BOGOR';
+        const isCibungbulang = p.utusan?.toLowerCase().includes('cibungbulang') || p.nama?.toLowerCase().includes('cibungbulang');
+        return matchesBogor || isCibungbulang;
+      });
+    }
+    return peserta.filter(p => p.kab_kota === userKabKota);
+  }, [currentUser, isSuperAdmin, selectedKabKotaFilter, peserta]);
+
+  const displayedSesi = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (isSuperAdmin) {
+      return selectedKabKotaFilter !== 'all'
+        ? sesi.filter(s => s.kab_kota === selectedKabKotaFilter)
+        : sesi;
+    }
+    const userKabKota = currentUser.kab_kota || '';
+    if (userKabKota.toUpperCase() === 'KABUPATEN BOGOR') {
+      return sesi.filter(s => {
+        const matchesBogor = s.kab_kota?.toUpperCase() === 'KABUPATEN BOGOR';
+        const isCibungbulang = s.materi?.toLowerCase().includes('cibungbulang') || s.instruktur?.toLowerCase().includes('cibungbulang');
+        return matchesBogor || isCibungbulang;
+      });
+    }
+    return sesi.filter(s => s.kab_kota === userKabKota);
+  }, [currentUser, isSuperAdmin, selectedKabKotaFilter, sesi]);
+
+  const displayedPresensi = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (isSuperAdmin) {
+      return selectedKabKotaFilter !== 'all'
+        ? presensi.filter(pr => pr.kab_kota === selectedKabKotaFilter)
+        : presensi;
+    }
+    const userKabKota = currentUser.kab_kota || '';
+    if (userKabKota.toUpperCase() === 'KABUPATEN BOGOR') {
+      return presensi.filter(pr => {
+        const matchesBogor = pr.kab_kota?.toUpperCase() === 'KABUPATEN BOGOR';
+        const isCibungbulang = pr.utusan?.toLowerCase().includes('cibungbulang') || pr.materi?.toLowerCase().includes('cibungbulang');
+        return matchesBogor || isCibungbulang;
+      });
+    }
+    return presensi.filter(pr => pr.kab_kota === userKabKota);
+  }, [currentUser, isSuperAdmin, selectedKabKotaFilter, presensi]);
+
+  const displayedTim = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (isSuperAdmin) {
+      return selectedKabKotaFilter !== 'all'
+        ? tim.filter(t => t.kab_kota === selectedKabKotaFilter)
+        : tim;
+    }
+    const userKabKota = currentUser.kab_kota || '';
+    return tim.filter(t => {
+      const isSuper = t.is_superadmin === true || t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.username === 'admin' || !t.kab_kota;
+      if (isSuper) return false;
+      return t.kab_kota === userKabKota;
+    });
+  }, [currentUser, isSuperAdmin, selectedKabKotaFilter, tim]);
 
   // --- AUTH ROUTING ---
   if (!currentUser) {
     return (
       <LoginScreen
         tim={tim}
-        branding={branding}
+        branding={{
+          ...branding,
+          appName: "SI-ANSOR PRO V7.0",
+          organisasi: "PIMPINAN PUSAT GP ANSOR (NASIONAL)",
+          cabang: "NASIONAL"
+        }}
         onLoginSuccess={(user) => {
           const isUserSuperAdmin = user.role === 'SuperAdmin' || (user.role as string) === 'Super Admin' || user.is_superadmin === true || user.username === 'admin';
           const normalizedUser: Tim = {
@@ -997,11 +1174,7 @@ export default function App() {
             kab_kota: isUserSuperAdmin ? '' : (user.kab_kota || '')
           };
           setCurrentUser(normalizedUser);
-          if (isUserSuperAdmin) {
-            setActiveTab('super-dash');
-          } else {
-            setActiveTab('dash');
-          }
+          setActiveTab('sesi');
           triggerAlert("Akses Diterima", `Ahlan Wa Sahlan, Sahabat ${normalizedUser.nama}!`, "success");
           // Automatically trigger sync immediately upon login
           setTimeout(() => {
@@ -1011,34 +1184,6 @@ export default function App() {
       />
     );
   }
-
-  // Permissions validation
-  const isSuperAdmin = currentUser.role === 'SuperAdmin' || (currentUser.role as string) === 'Super Admin' || currentUser.is_superadmin === true || currentUser.username === 'admin';
-  const isAdmin = currentUser.role === 'Admin' || isSuperAdmin;
-  const perms = currentUser.permissions || [];
-
-  const canDash = isAdmin || perms.includes('dash');
-  const canScan = isAdmin || perms.includes('scan');
-  const canSesi = isAdmin || perms.includes('sesi'); // Tambah Sesi permission check
-  const canPeserta = isAdmin || perms.includes('peserta');
-  const canRekap = isAdmin || perms.includes('rekap'); // Rekap Data permission check
-  const canKelulusan = isAdmin || perms.includes('kelulusan');
-
-  const displayedPeserta = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
-    ? peserta.filter(p => p.kab_kota === selectedKabKotaFilter)
-    : peserta;
-
-  const displayedSesi = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
-    ? sesi.filter(s => s.kab_kota === selectedKabKotaFilter)
-    : sesi;
-
-  const displayedPresensi = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
-    ? presensi.filter(pr => pr.kab_kota === selectedKabKotaFilter)
-    : presensi;
-
-  const displayedTim = currentUser?.is_superadmin && selectedKabKotaFilter !== 'all'
-    ? tim.filter(t => t.kab_kota === selectedKabKotaFilter)
-    : tim;
 
   const handleLogout = () => {
     triggerConfirm("Ke luar Akun", "Yakin ingin keluar dari panel operator?", (yes) => {
@@ -1077,17 +1222,31 @@ export default function App() {
         {/* Sidebar Navigation */}
         <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 custom-scrollbar">
           {isSuperAdmin && (
-            <button
-              onClick={() => { setActiveTab('super-dash'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
-                activeTab === 'super-dash' 
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' 
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-              }`}
-            >
-              <Activity className="w-4.5 h-4.5 text-purple-400" />
-              <span>Dashboard Pusat</span>
-            </button>
+            <>
+              <button
+                onClick={() => { setActiveTab('super-dash'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
+                  activeTab === 'super-dash' 
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' 
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                }`}
+              >
+                <Activity className="w-4.5 h-4.5 text-purple-400" />
+                <span>Dashboard Pusat</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('instruktur'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
+                  activeTab === 'instruktur' 
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' 
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                }`}
+              >
+                <GraduationCap className="w-4.5 h-4.5 text-purple-400" />
+                <span>Data Instruktur / Materi</span>
+              </button>
+            </>
           )}
 
           {!isSuperAdmin && canDash && (
@@ -1174,6 +1333,18 @@ export default function App() {
             </button>
           )}
 
+          <button
+            onClick={() => { setActiveTab('timer'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-black transition-all ${
+              activeTab === 'timer' 
+                ? (isSuperAdmin ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10') 
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+            }`}
+          >
+            <Clock className="w-4.5 h-4.5" />
+            <span>Waktu Digital</span>
+          </button>
+
           {isAdmin && (
             <>
               <button
@@ -1213,7 +1384,13 @@ export default function App() {
               </div>
               <div className="truncate text-xs">
                 <p className="font-extrabold text-white truncate leading-tight">{currentUser.nama}</p>
-                <span className="text-[9px] text-emerald-400 block font-bold uppercase tracking-widest mt-0.5">{currentUser.role === 'Admin' ? 'Super Admin' : 'Operator'}</span>
+                <span className="text-[9px] text-emerald-400 block font-bold uppercase tracking-widest mt-0.5">
+                  {isSuperAdmin 
+                    ? 'Super Admin' 
+                    : currentUser.role === 'Admin' 
+                      ? 'Admin Wilayah' 
+                      : 'Operator'}
+                </span>
               </div>
             </div>
             <button
@@ -1265,6 +1442,8 @@ export default function App() {
                 {activeTab === 'kelulusan' && 'Hasil Evaluasi Kelulusan_'}
                 {activeTab === 'tim' && 'Hak Akses Operator_'}
                 {activeTab === 'custom' && 'Kustomisasi Aplikasi_'}
+                {activeTab === 'instruktur' && 'Data Instruktur & Materi_'}
+                {activeTab === 'timer' && 'Waktu Digital & Timer_'}
               </h2>
             </div>
           </div>
@@ -1311,8 +1490,12 @@ export default function App() {
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30' 
                 : 'bg-amber-50 border-amber-250/20 text-amber-500 dark:bg-amber-950/20'
             }`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-              <span>{supabaseConnected ? 'Online Mode' : 'Offline Mode'}</span>
+              {isSyncing ? (
+                <RefreshCw className="h-2.5 w-2.5 animate-spin text-emerald-500 dark:text-emerald-400" />
+              ) : (
+                <span className={`h-1.5 w-1.5 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+              )}
+              <span>{isSyncing ? 'Syncing...' : (supabaseConnected ? 'Online Mode' : 'Offline Mode')}</span>
             </span>
           </div>
         </header>
@@ -1345,6 +1528,7 @@ export default function App() {
               supabaseMode={supabaseMode}
               onRetrySync={triggerSupabaseSync}
               isSyncing={isSyncing}
+              isSuperAdmin={isSuperAdmin}
             />
           )}
 
@@ -1426,6 +1610,21 @@ export default function App() {
               onForceUpload={handleForceUploadToSupabase}
               onForceDownload={handleForceDownloadFromSupabase}
               onRetrySync={triggerSupabaseSync}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
+
+          {activeTab === 'instruktur' && isSuperAdmin && (
+            <InstrukturTab
+              sesi={sesi}
+              onRenameInstructor={handleRenameInstructor}
+              onDeleteInstructor={handleDeleteInstructorFromSessions}
+            />
+          )}
+
+          {activeTab === 'timer' && (
+            <TimerTab
+              sesi={displayedSesi}
             />
           )}
 
@@ -1435,7 +1634,7 @@ export default function App() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-205 dark:border-navy-850 fixed bottom-0 inset-x-0 py-2.5 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-30 md:hidden overflow-x-auto custom-scrollbar">
-        <div className={`min-w-[420px] max-w-md mx-auto grid ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-6'} gap-1 px-3 text-center whitespace-nowrap text-slate-500`}>
+        <div className={`min-w-[420px] max-w-md mx-auto grid ${isSuperAdmin ? 'grid-cols-5' : 'grid-cols-6'} gap-1 px-3 text-center whitespace-nowrap text-slate-500`}>
           
           {isSuperAdmin ? (
             <>
@@ -1445,6 +1644,14 @@ export default function App() {
               >
                 <Activity className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
                 <span className="text-[8px] font-black uppercase tracking-wider">Pusat</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('instruktur')}
+                className={`flex flex-col items-center space-y-1 ${activeTab === 'instruktur' ? 'text-purple-500' : 'text-slate-400'}`}
+              >
+                <GraduationCap className="w-4.5 h-4.5 text-purple-400" />
+                <span className="text-[8px] font-black uppercase tracking-wider">Instruktur</span>
               </button>
 
               <button
@@ -1627,9 +1834,10 @@ export default function App() {
                       alt="Avatar" 
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-navy-950 text-slate-400 flex items-center justify-center font-black text-xl shrink-0 shadow-sm border border-slate-200 dark:border-navy-800">
-                      {peserta.find(k => k.id === printQrId)?.nama.charAt(0)}
-                    </div>
+                    <div 
+                      className="w-20 h-20 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center p-1.5 shrink-0 shadow-sm border border-slate-200 dark:border-navy-800"
+                      dangerouslySetInnerHTML={{ __html: effectiveBranding.logo }}
+                    />
                   )}
                 </div>
                 <div>
@@ -1672,7 +1880,7 @@ export default function App() {
                         <body>
                           <div class="card">
                             <div class="photo-container">
-                              ${k?.foto ? `<img class="photo" src="${k.foto}" />` : `<div class="initial-photo">${k?.nama.charAt(0)}</div>`}
+                              ${k?.foto ? `<img class="photo" src="${k.foto}" />` : `<div class="initial-photo" style="background: white; padding: 4px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; border-radius: 50%;">${effectiveBranding.logo}</div>`}
                             </div>
                             <div class="name">${k?.nama}</div>
                             <div class="sub">${effectiveBranding.delegationType || 'PAC'} ${k?.utusan}</div>
@@ -1699,34 +1907,7 @@ export default function App() {
         </div>
       )}
 
-      {/* GLOBAL SINKRONISASI LOADING OVERLAY */}
-      {isSyncing && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xs shadow-2xl p-6 border border-slate-200 dark:border-navy-850 text-center space-y-4">
-            <div className="mx-auto w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/10 flex items-center justify-center">
-              <RefreshCw className="w-7 h-7 animate-spin text-emerald-500" />
-            </div>
-            <div>
-              <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest animate-pulse">Menghubungkan Database</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
-                Sedang menyinkronkan data presensi & silabus dengan basis data cloud Supabase...
-              </p>
-            </div>
-            <div className="w-full bg-slate-100 dark:bg-navy-950 rounded-full h-1.5 overflow-hidden">
-              <div className="bg-emerald-500 h-full w-2/3 rounded-full animate-pulse"></div>
-            </div>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setIsSyncing(false)}
-                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-navy-950 dark:hover:bg-navy-900 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-navy-800 rounded-xl text-xs font-bold transition uppercase tracking-wider"
-              >
-                Masuk Offline (Lewati)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* BACKGROUND SYNC IS RUNNING SILENTLY IN THE CORNER */}
 
     </div>
   );

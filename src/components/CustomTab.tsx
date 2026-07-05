@@ -14,6 +14,7 @@ interface CustomTabProps {
   onForceUpload?: () => void;
   onForceDownload?: () => void;
   onRetrySync?: () => void;
+  isSuperAdmin?: boolean;
 }
 
 export default function CustomTab({
@@ -26,7 +27,8 @@ export default function CustomTab({
   supabaseErrorDetail,
   onForceUpload,
   onForceDownload,
-  onRetrySync
+  onRetrySync,
+  isSuperAdmin = false
 }: CustomTabProps) {
   // Visual form fields
   const [appName, setAppName] = useState(branding.appName);
@@ -96,7 +98,7 @@ export default function CustomTab({
   return (
     <div className="space-y-6">
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 ${isSuperAdmin ? 'lg:grid-cols-2' : ''} gap-6`}>
         
         {/* KIRI: Branding Visual Setup */}
         <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350 flex flex-col justify-between">
@@ -234,11 +236,11 @@ export default function CustomTab({
                         />
                       </label>
 
-                      {logo !== `<svg class="w-11 h-11" viewBox="0 0 200 215" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ansorGrad" x1="20" y1="180" x2="180" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d8ff8" /><stop offset="40%" stop-color="#06b6d4" /><stop offset="70%" stop-color="#0d9488" /><stop offset="100%" stop-color="#10b981" /></linearGradient></defs><circle cx="100" cy="100" r="85" fill="url(#ansorGrad)" opacity="0.05" /><path d="M 44 146 C 18 114 18 64 54 34 C 80 12 120 12 146 34" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" /><path d="M 33 134 C 10 98 10 48 46 18 C 72 -5 128 -5 154 18" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" opacity="0.7" /><path d="M 146 34 C 172 64 172 114 146 146 C 136 156 122 165 100 168" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" /><g stroke="url(#ansorGrad)" stroke-width="3.5" stroke-linecap="round" opacity="0.9"><line x1="100" y1="95" x2="100" y2="60" /><line x1="100" y1="95" x2="130" y2="65" /><line x1="100" y1="95" x2="140" y2="82" /><line x1="100" y1="95" x2="140" y2="108" /><line x1="100" y1="95" x2="130" y2="125" /><line x1="100" y1="95" x2="70" y2="65" /><line x1="100" y1="95" x2="60" y2="82" /><line x1="100" y1="95" x2="60" y2="108" /><line x1="100" y1="95" x2="70" y2="125" /></g><circle cx="100" cy="95" r="42" stroke="white" stroke-width="3" fill="none" opacity="0.3" /><circle cx="100" cy="78" r="9.5" fill="url(#ansorGrad)" /><circle cx="74" cy="94" r="8" fill="url(#ansorGrad)" /><circle cx="126" cy="94" r="8" fill="url(#ansorGrad)" /><path d="M 100 90 C 96 90, 84 98, 74 104 C 60 112, 50 116, 50 116 C 50 116, 62 110, 74 106 C 86 102, 92 108, 92 118 L 92 142 C 92 148, 88 152, 82 156 C 72 161, 58 162, 58 162 C 58 162, 74 161, 86 156 C 94 152, 100 144, 100 142 C 100 144, 106 152, 114 156 C 126 161, 142 162, 142 162 C 142 162, 128 161, 118 156 C 112 152, 108 148, 108 142 L 108 118 C 108 108, 114 102, 126 106 C 138 110, 150 116, 150 116 C 150 116, 140 112, 126 104 C 116 98, 104 90, 100 90 Z" fill="url(#ansorGrad)" /><path d="M 52 152 C 65 168, 82 173, 100 173 C 118 173, 135 168, 148 152" stroke="url(#ansorGrad)" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M 64 163 C 74 177, 86 181, 100 181 C 114 181, 126 177, 136 163" stroke="url(#ansorGrad)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 76 172 C 83 186, 91 189, 100 189 C 109 189, 117 186, 124 172" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 88 181 C 92 192, 96 194, 100 194 C 104 194, 108 192, 112 181" stroke="url(#ansorGrad)" stroke-width="2" stroke-linecap="round" fill="none" /><g transform="translate(100, 32) scale(0.9)"><path d="M -25 15 C -5 -5, 20 -20, 35 -15 C 20 -5, 10 5, 2 20 C -5 15, -15 12, -25 15 Z" fill="url(#ansorGrad)" /><path d="M 2 20 C 5 10, 18 5, 28 5 C 18 12, 12 20, 10 32 C 6 27, 4 23, 2 20 Z" fill="url(#ansorGrad)" /><path d="M -15 10 C -25 2, -32 -5, -40 2 C -32 8, -25 12, -15 10 Z" fill="url(#ansorGrad)" /></g></svg>` && (
+                      {logo.includes('ansorGrad') || logo.includes('blueTeal') || logo.includes('viewBox="0 0 120 120"') || logo.includes('viewBox="0 0 200 215"') || logo !== `<svg class="w-11 h-11" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="60,5 115,115 5,115" fill="#008a3c" /><polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" stroke-width="2" /><path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" /><circle cx="60" cy="72" r="4.5" fill="#ffffff" /><line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" stroke-width="1.5" /><line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" stroke-width="1.5" /><line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" stroke-width="1.2" /><polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" /><polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" /><polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" /><polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" /><polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" /><polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" /><polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" /><polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" /><polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" /><rect x="15" y="103" width="90" height="15" fill="#008a3c" /><text x="60" y="115" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="900" font-size="12" fill="#ffffff" text-anchor="middle" letter-spacing="1">ANSOR</text></svg>` && (
                         <button
                           type="button"
                           onClick={() => {
-                            const defaultLogo = `<svg class="w-11 h-11" viewBox="0 0 200 215" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ansorGrad" x1="20" y1="180" x2="180" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d8ff8" /><stop offset="40%" stop-color="#06b6d4" /><stop offset="70%" stop-color="#0d9488" /><stop offset="100%" stop-color="#10b981" /></linearGradient></defs><circle cx="100" cy="100" r="85" fill="url(#ansorGrad)" opacity="0.05" /><path d="M 44 146 C 18 114 18 64 54 34 C 80 12 120 12 146 34" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" /><path d="M 33 134 C 10 98 10 48 46 18 C 72 -5 128 -5 154 18" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" opacity="0.7" /><path d="M 146 34 C 172 64 172 114 146 146 C 136 156 122 165 100 168" stroke="url(#ansorGrad)" stroke-width="7" stroke-linecap="round" /><g stroke="url(#ansorGrad)" stroke-width="3.5" stroke-linecap="round" opacity="0.9"><line x1="100" y1="95" x2="100" y2="60" /><line x1="100" y1="95" x2="130" y2="65" /><line x1="100" y1="95" x2="140" y2="82" /><line x1="100" y1="95" x2="140" y2="108" /><line x1="100" y1="95" x2="130" y2="125" /><line x1="100" y1="95" x2="70" y2="65" /><line x1="100" y1="95" x2="60" y2="82" /><line x1="100" y1="95" x2="60" y2="108" /><line x1="100" y1="95" x2="70" y2="125" /></g><circle cx="100" cy="95" r="42" stroke="white" stroke-width="3" fill="none" opacity="0.3" /><circle cx="100" cy="78" r="9.5" fill="url(#ansorGrad)" /><circle cx="74" cy="94" r="8" fill="url(#ansorGrad)" /><circle cx="126" cy="94" r="8" fill="url(#ansorGrad)" /><path d="M 100 90 C 96 90, 84 98, 74 104 C 60 112, 50 116, 50 116 C 50 116, 62 110, 74 106 C 86 102, 92 108, 92 118 L 92 142 C 92 148, 88 152, 82 156 C 72 161, 58 162, 58 162 C 58 162, 74 161, 86 156 C 94 152, 100 144, 100 142 C 100 144, 106 152, 114 156 C 126 161, 142 162, 142 162 C 142 162, 128 161, 118 156 C 112 152, 108 148, 108 142 L 108 118 C 108 108, 114 102, 126 106 C 138 110, 150 116, 150 116 C 150 116, 140 112, 126 104 C 116 98, 104 90, 100 90 Z" fill="url(#ansorGrad)" /><path d="M 52 152 C 65 168, 82 173, 100 173 C 118 173, 135 168, 148 152" stroke="url(#ansorGrad)" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M 64 163 C 74 177, 86 181, 100 181 C 114 181, 126 177, 136 163" stroke="url(#ansorGrad)" stroke-width="4" stroke-linecap="round" fill="none" /><path d="M 76 172 C 83 186, 91 189, 100 189 C 109 189, 117 186, 124 172" stroke="url(#ansorGrad)" stroke-width="3" stroke-linecap="round" fill="none" /><path d="M 88 181 C 92 192, 96 194, 100 194 C 104 194, 108 192, 112 181" stroke="url(#ansorGrad)" stroke-width="2" stroke-linecap="round" fill="none" /><g transform="translate(100, 32) scale(0.9)"><path d="M -25 15 C -5 -5, 20 -20, 35 -15 C 20 -5, 10 5, 2 20 C -5 15, -15 12, -25 15 Z" fill="url(#ansorGrad)" /><path d="M 2 20 C 5 10, 18 5, 28 5 C 18 12, 12 20, 10 32 C 6 27, 4 23, 2 20 Z" fill="url(#ansorGrad)" /><path d="M -15 10 C -25 2, -32 -5, -40 2 C -32 8, -25 12, -15 10 Z" fill="url(#ansorGrad)" /></g></svg>`;
+                            const defaultLogo = `<svg class="w-11 h-11" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="60,5 115,115 5,115" fill="#008a3c" /><polygon points="60,11 110,110 10,110" fill="none" stroke="#ffffff" stroke-width="2" /><path d="M 40,75 A 20,20 0 0,0 80,75 A 17,17 0 0,1 40,75 Z" fill="#ffffff" /><circle cx="60" cy="72" r="4.5" fill="#ffffff" /><line x1="60" y1="67" x2="60" y2="58" stroke="#ffffff" stroke-width="1.5" /><line x1="60" y1="77" x2="60" y2="82" stroke="#ffffff" stroke-width="1.5" /><line x1="55" y1="72" x2="46" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="65" y1="72" x2="74" y2="72" stroke="#ffffff" stroke-width="1.5" /><line x1="56.5" y1="68.5" x2="50" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="68.5" x2="70" y2="62" stroke="#ffffff" stroke-width="1.2" /><line x1="56.5" y1="75.5" x2="50" y2="82" stroke="#ffffff" stroke-width="1.2" /><line x1="63.5" y1="75.5" x2="70" y2="82" stroke="#ffffff" stroke-width="1.2" /><polygon points="60,35 61.5,39.5 66,39.5 62.5,42.2 63.8,46.5 60,44 56.2,46.5 57.5,42.2 54,39.5 58.5,39.5" fill="#ffffff" /><polygon points="38,48 39.2,51 43,51 40,53 41,56.5 38,54.5 35,56.5 36,53 33,51 36.8,51" fill="#ffffff" /><polygon points="32,60 33.2,63 37,63 34,65 35,68.5 32,66.5 29,68.5 30,65 27,63 30.8,63" fill="#ffffff" /><polygon points="30,73 31.2,76 35,76 32,78 33,81.5 30,79.5 27,81.5 28,78 25,76 28.8,76" fill="#ffffff" /><polygon points="32,86 33.2,89 37,89 34,91 35,94.5 32,92.5 29,94.5 30,92 27,89 30.8,89" fill="#ffffff" /><polygon points="82,48 83.2,51 87,51 84,53 85,56.5 82,54.5 79,56.5 80,53 77,51 80.8,51" fill="#ffffff" /><polygon points="88,60 89.2,63 93,63 90,65 91,68.5 88,66.5 85,68.5 86,65 83,63 86.8,63" fill="#ffffff" /><polygon points="90,73 91.2,76 95,76 92,78 93,81.5 90,79.5 87,81.5 88,78 85,76 88.8,76" fill="#ffffff" /><polygon points="88,86 89.2,89 93,89 90,91 91,94.5 88,92.5 85,94.5 86,92 83,89 86.8,89" fill="#ffffff" /><rect x="15" y="103" width="90" height="15" fill="#008a3c" /><text x="60" y="115" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="900" font-size="12" fill="#ffffff" text-anchor="middle" letter-spacing="1">ANSOR</text></svg>`;
                             setLogo(defaultLogo);
                             onSaveBranding({
                               appName: appName.trim(),
@@ -279,192 +281,195 @@ export default function CustomTab({
         </div>
 
         {/* KANAN: Supabase Real connection configuration */}
-        <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-black text-navy-900 dark:text-white uppercase tracking-widest border-b dark:border-navy-850 pb-2 flex items-center space-x-1.5">
-              <Database className="w-4.5 h-4.5 text-emerald-500" />
-              <span>Hubungkan ke Database Supabase Anda</span>
-            </h3>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase font-bold">Lakukan sinkronisasi riwayat pendaftaran & presensi langsung ke cloud!</p>
+        {isSuperAdmin && (
+          <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350 flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-black text-navy-900 dark:text-white uppercase tracking-widest border-b dark:border-navy-850 pb-2 flex items-center space-x-1.5">
+                <Database className="w-4.5 h-4.5 text-emerald-500" />
+                <span>Hubungkan ke Database Supabase Anda</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase font-bold">Lakukan sinkronisasi riwayat pendaftaran & presensi langsung ke cloud!</p>
 
-            <form onSubmit={handleDbSubmit} className="space-y-4 pt-4 text-xs font-semibold">
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Supabase API URL</label>
-                <input
-                  type="text"
-                  value={sbUrl}
-                  onChange={(e) => setSbUrl(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 px-3 py-2.5 rounded-lg text-slate-800 dark:text-white font-mono"
-                  placeholder="https://your-project.supabase.co"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Supabase Anon Public API Key</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                    <Key className="w-3.5 h-3.5" />
-                  </span>
+              <form onSubmit={handleDbSubmit} className="space-y-4 pt-4 text-xs font-semibold">
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Supabase API URL</label>
                   <input
-                    type="password"
-                    value={sbKey}
-                    onChange={(e) => setSbKey(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-navy-850 pl-9 pr-3 py-2.5 rounded-lg text-slate-800 dark:text-white font-mono"
-                    placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                    type="text"
+                    value={sbUrl}
+                    onChange={(e) => setSbUrl(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-navy-850 px-3 py-2.5 rounded-lg text-slate-800 dark:text-white font-mono"
+                    placeholder="https://your-project.supabase.co"
                   />
                 </div>
-              </div>
 
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-navy-850 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Status Sinkronisasi saat ini:</span>
-                  {onRetrySync && supabaseMode !== 'none' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetSupabaseClient();
-                        onRetrySync();
-                      }}
-                      className="text-[9px] font-extrabold text-emerald-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Coba hubungkan ulang ke database"
-                    >
-                      <RefreshCw className="w-2.5 h-2.5" />
-                      <span>Hubungkan Ulang</span>
-                    </button>
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Supabase Anon Public API Key</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <Key className="w-3.5 h-3.5" />
+                    </span>
+                    <input
+                      type="password"
+                      value={sbKey}
+                      onChange={(e) => setSbKey(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-navy-850 pl-9 pr-3 py-2.5 rounded-lg text-slate-800 dark:text-white font-mono"
+                      placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-955 border border-slate-150 dark:border-navy-850 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Status Sinkronisasi saat ini:</span>
+                    {onRetrySync && supabaseMode !== 'none' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetSupabaseClient();
+                          onRetrySync();
+                        }}
+                        className="text-[9px] font-extrabold text-emerald-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Coba hubungkan ulang ke database"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        <span>Hubungkan Ulang</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    <div className={`w-3 h-3 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : (supabaseError ? 'bg-rose-500 animate-bounce' : 'bg-amber-500')}`}></div>
+                    <span>
+                      {supabaseConnected 
+                        ? `Terkoneksi online (${supabaseMode === 'env' ? 'Environment Keys' : 'Kunci Kustom'})` 
+                        : (supabaseError === 'auth' 
+                            ? 'Offline: Kunci API / URL tidak valid' 
+                            : (supabaseError === 'schema' 
+                                ? 'Offline: Tabel database belum dibuat' 
+                                : (supabaseError === 'connection'
+                                    ? 'Offline: Gagal terhubung (Gangguan Koneksi)'
+                                    : 'Offline: Menggunakan database local memory/localStorage'
+                                  )
+                              )
+                          )
+                      }
+                    </span>
+                  </div>
+                  {supabaseError === 'auth' && (
+                    <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
+                      ⚠️ Koneksi Gagal: Kunci API (Anon Key) atau URL Supabase Anda tidak valid. Periksa kembali isian URL & Key di atas!
+                      {supabaseErrorDetail && (
+                        <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
+                          Detail: {supabaseErrorDetail}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {supabaseError === 'schema' && (
+                    <div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-950/40 p-2.5 rounded-lg leading-relaxed">
+                      ⚠️ Tabel Belum Siap: Koneksi berhasil tetapi beberapa tabel tidak ditemukan. Salin dan jalankan script SQL Schema di bawah pada tab SQL Editor Supabase Anda!
+                      {supabaseErrorDetail && (
+                        <div className="mt-1 font-mono text-[9px] text-amber-500 opacity-90 border-t border-amber-100 dark:border-amber-900/40 pt-1">
+                          Detail: {supabaseErrorDetail}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {supabaseError === 'connection' && (
+                    <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
+                      ⚠️ Gangguan Koneksi: Terjadi kesalahan koneksi atau DNS ketika menghubungi database Supabase Anda. Periksa internet atau isian URL/API Key Anda.
+                      {supabaseErrorDetail && (
+                        <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
+                          Detail: {supabaseErrorDetail}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {supabaseConnected && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-navy-850 space-y-2">
+                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Tindakan Sinkronisasi Manual:</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={onForceUpload}
+                          className="flex items-center justify-center space-x-1 py-2 px-1 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-lg text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
+                        >
+                          <Upload className="w-3 h-3 animate-pulse" />
+                          <span>Paksa Unggah ke Cloud</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onForceDownload}
+                          className="flex items-center justify-center space-x-1 py-2 px-1 bg-slate-850 hover:bg-slate-800 dark:bg-navy-850 dark:hover:bg-navy-800 text-white font-extrabold rounded-lg text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Paksa Unduh dari Cloud</span>
+                        </button>
+                      </div>
+                      <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold leading-normal">
+                        *Gunakan <b>Paksa Unggah</b> jika operator (seperti kru Panitia) atau setelan visual Anda belum sinkron dengan database Supabase Cloud.
+                      </p>
+                    </div>
                   )}
                 </div>
-                 <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  <div className={`w-3 h-3 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : (supabaseError ? 'bg-rose-500 animate-bounce' : 'bg-amber-500')}`}></div>
-                  <span>
-                    {supabaseConnected 
-                      ? `Terkoneksi online (${supabaseMode === 'env' ? 'Environment Keys' : 'Kunci Kustom'})` 
-                      : (supabaseError === 'auth' 
-                          ? 'Offline: Kunci API / URL tidak valid' 
-                          : (supabaseError === 'schema' 
-                              ? 'Offline: Tabel database belum dibuat' 
-                              : (supabaseError === 'connection'
-                                  ? 'Offline: Gagal terhubung (Gangguan Koneksi)'
-                                  : 'Offline: Menggunakan database local memory/localStorage'
-                                )
-                            )
-                        )
-                    }
-                  </span>
-                </div>
-                {supabaseError === 'auth' && (
-                  <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
-                    ⚠️ Koneksi Gagal: Kunci API (Anon Key) atau URL Supabase Anda tidak valid. Periksa kembali isian URL & Key di atas!
-                    {supabaseErrorDetail && (
-                      <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
-                        Detail: {supabaseErrorDetail}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {supabaseError === 'schema' && (
-                  <div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-950/40 p-2.5 rounded-lg leading-relaxed">
-                    ⚠️ Tabel Belum Siap: Koneksi berhasil tetapi beberapa tabel tidak ditemukan. Salin dan jalankan script SQL Schema di bawah pada tab SQL Editor Supabase Anda!
-                    {supabaseErrorDetail && (
-                      <div className="mt-1 font-mono text-[9px] text-amber-500 opacity-90 border-t border-amber-100 dark:border-amber-900/40 pt-1">
-                        Detail: {supabaseErrorDetail}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {supabaseError === 'connection' && (
-                  <div className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 p-2.5 rounded-lg leading-relaxed">
-                    ⚠️ Gangguan Koneksi: Terjadi kesalahan koneksi atau DNS ketika menghubungi database Supabase Anda. Periksa internet atau isian URL/API Key Anda.
-                    {supabaseErrorDetail && (
-                      <div className="mt-1 font-mono text-[9px] text-rose-500 opacity-90 border-t border-rose-100 dark:border-rose-900/40 pt-1">
-                        Detail: {supabaseErrorDetail}
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {supabaseConnected && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-navy-850 space-y-2">
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Tindakan Sinkronisasi Manual:</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={onForceUpload}
-                        className="flex items-center justify-center space-x-1 py-2 px-1 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-lg text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
-                      >
-                        <Upload className="w-3 h-3 animate-pulse" />
-                        <span>Paksa Unggah ke Cloud</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onForceDownload}
-                        className="flex items-center justify-center space-x-1 py-2 px-1 bg-slate-850 hover:bg-slate-800 dark:bg-navy-850 dark:hover:bg-navy-800 text-white font-extrabold rounded-lg text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>Paksa Unduh dari Cloud</span>
-                      </button>
-                    </div>
-                    <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold leading-normal">
-                      *Gunakan <b>Paksa Unggah</b> jika operator (seperti kru Panitia) atau setelan visual Anda belum sinkron dengan database Supabase Cloud.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-slate-900 hover:bg-slate-955 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition shadow-md active:scale-[0.98]"
-              >
-                Terapkan & Hubungkan Supabase
-              </button>
-            </form>
-          </div>
-        </div>
-
-      </div>
-
-      {/* SQL Setup Instructions Block (High Usability) */}
-      <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowSqlInstructions(!showSqlInstructions)}
-            className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 font-extrabold text-xs uppercase tracking-wider transition-colors duration-200"
-          >
-            <Database className="w-4 h-4 text-emerald-500" />
-            <span>{showSqlInstructions ? 'Sembunyikan' : 'Tampilkan'} Instruksi SQL Schema Supabase</span>
-          </button>
-          
-          {showSqlInstructions && (
-            <button
-              onClick={handleCopySql}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
-            >
-              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Teks Disalin!' : 'Copy SQL Schema'}</span>
-            </button>
-          )}
-        </div>
-
-        {showSqlInstructions && (
-          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-navy-850 space-y-4 animate-fadeIn">
-            <div>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Copy dan jalankan script SQL di bawah pada SQL Editor Supabase Anda untuk inisialisasi tabel.</p>
-            </div>
-
-            {toastMsg && (
-              <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-xs text-center font-bold">
-                {toastMsg}
-              </div>
-            )}
-
-            <div className="relative">
-              <pre className="p-4 bg-slate-950 dark:bg-slate-950 border border-slate-850/50 rounded-xl overflow-x-auto text-[10px] font-mono text-slate-300 max-h-64 custom-scrollbar">
-                <code>{SUPABASE_SQL_SCHEMA}</code>
-              </pre>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-955 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition shadow-md active:scale-[0.98]"
+                >
+                  Terapkan & Hubungkan Supabase
+                </button>
+              </form>
             </div>
           </div>
         )}
       </div>
+
+      {/* SQL Setup Instructions Block (High Usability) */}
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-slate-900 rounded-[20px] p-5 border border-slate-200 dark:border-navy-800 shadow-sm transition-colors duration-350">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowSqlInstructions(!showSqlInstructions)}
+              className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 font-extrabold text-xs uppercase tracking-wider transition-colors duration-200"
+            >
+              <Database className="w-4 h-4 text-emerald-500" />
+              <span>{showSqlInstructions ? 'Sembunyikan' : 'Tampilkan'} Instruksi SQL Schema Supabase</span>
+            </button>
+            
+            {showSqlInstructions && (
+              <button
+                onClick={handleCopySql}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl text-[9px] uppercase tracking-wider transition shadow-sm active:scale-[0.98]"
+              >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Teks Disalin!' : 'Copy SQL Schema'}</span>
+              </button>
+            )}
+          </div>
+
+          {showSqlInstructions && (
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-navy-850 space-y-4 animate-fadeIn">
+              <div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Copy dan jalankan script SQL di bawah pada SQL Editor Supabase Anda untuk inisialisasi tabel.</p>
+              </div>
+
+              {toastMsg && (
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-xs text-center font-bold">
+                  {toastMsg}
+                </div>
+              )}
+
+              <div className="relative">
+                <pre className="p-4 bg-slate-950 dark:bg-slate-950 border border-slate-850/50 rounded-xl overflow-x-auto text-[10px] font-mono text-slate-300 max-h-64 custom-scrollbar">
+                  <code>{SUPABASE_SQL_SCHEMA}</code>
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

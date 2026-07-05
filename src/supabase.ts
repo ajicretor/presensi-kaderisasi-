@@ -437,26 +437,7 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
       }
     });
 
-    const toDeleteIds: string[] = [];
-    existingList.forEach(item => {
-      if (!localKeys.has(item.id)) {
-        toDeleteIds.push(item.id);
-      }
-    });
-
     let allOk = true;
-
-    if (toDeleteIds.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
-        const chunk = toDeleteIds.slice(i, i + chunkSize);
-        const { error } = await client.from('peserta').delete().in('id', chunk);
-        if (error) {
-          console.error("Error batch deleting peserta:", error);
-          allOk = false;
-        }
-      }
-    }
 
     if (toUpsert.length > 0) {
       const success = await robustUpsert(client, 'peserta', toUpsert);
@@ -559,25 +540,7 @@ export async function syncSesi(data: Sesi[], currentKabKota?: string, isSuperAdm
       }
     });
 
-    const toDeleteList: { num: number; kab_kota: string }[] = [];
-    existingList.forEach(item => {
-      const key = `${item.num}_${item.kab_kota || ''}`;
-      if (!localKeys.has(key)) {
-        toDeleteList.push({ num: item.num, kab_kota: item.kab_kota || '' });
-      }
-    });
-
     let allOk = true;
-
-    if (toDeleteList.length > 0) {
-      for (const item of toDeleteList) {
-        const { error } = await client.from('sesi').delete().eq('num', item.num).eq('kab_kota', item.kab_kota);
-        if (error) {
-          console.error("Error deleting sesi:", error);
-          allOk = false;
-        }
-      }
-    }
 
     if (toUpsert.length > 0) {
       const success = await robustUpsert(client, 'sesi', toUpsert);
@@ -683,27 +646,7 @@ export async function syncPresensi(data: Presensi[], currentKabKota?: string, is
       }
     });
 
-    const toDeleteIds: number[] = [];
-    existingList.forEach(item => {
-      const key = `${item.id}_${item.sesi}`;
-      if (!localKeys.has(key)) {
-        toDeleteIds.push(item.db_id);
-      }
-    });
-
     let allOk = true;
-
-    if (toDeleteIds.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < toDeleteIds.length; i += chunkSize) {
-        const chunk = toDeleteIds.slice(i, i + chunkSize);
-        const { error } = await client.from('presensi').delete().in('db_id', chunk);
-        if (error) {
-          console.error("Error batch deleting presensi:", error);
-          allOk = false;
-        }
-      }
-    }
 
     if (toInsert.length > 0) {
       const chunkSize = 100;

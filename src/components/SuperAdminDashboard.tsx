@@ -766,7 +766,13 @@ export default function SuperAdminDashboard({
                       </div>
                       <div className="text-[10px]">
                         <p className="font-extrabold text-slate-700 dark:text-white">{t.nama}</p>
-                        <p className="text-[9px] text-slate-400 font-bold">Role: {t.role} (@{t.username})</p>
+                        <p className="text-[9px] text-slate-400 font-bold">
+                          Role: {t.role === 'SuperAdmin' || (t.role as string) === 'Super Admin' || t.is_superadmin || t.username === 'admin'
+                            ? 'SUPER ADMIN'
+                            : t.role === 'Admin'
+                              ? 'ADMIN WILAYAH'
+                              : 'OPERATOR'} (@{t.username})
+                        </p>
                       </div>
                     </div>
                   ))}

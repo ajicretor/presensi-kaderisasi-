@@ -59,6 +59,15 @@ export interface Branding {
   kab_kota?: string; // multi-tenancy
 }
 
+export interface Instruktur {
+  id: string;
+  nama: string;
+  materi: string;
+  hp?: string;
+  instansi?: string;
+  created_at?: string;
+}
+
 export interface SystemState {
   peserta: Peserta[];
   presensi: Presensi[];
@@ -66,4 +75,5 @@ export interface SystemState {
   tim: Tim[];
   activeSesiId: number;
   branding: Branding;
+  instruktur?: Instruktur[];
 }
