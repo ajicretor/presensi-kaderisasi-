@@ -1034,6 +1034,8 @@ export default function App() {
       "RESET DATA LOKAL", 
       "Apakah Anda yakin ingin mengatur ulang cache aplikasi di browser? Tindakan ini hanya menghapus data lokal (cache) di browser Anda. Seluruh data yang sudah tersimpan di database cloud (Supabase) tetap aman dan tidak akan terhapus.", 
       () => {
+        const activeUser = currentUser;
+
         safeStorage.removeItem('SIANSOR_STATE_V7');
         safeStorage.removeItem('SIANSOR_SUPABASE_URL');
         safeStorage.removeItem('SIANSOR_SUPABASE_KEY');
@@ -1047,12 +1049,28 @@ export default function App() {
         setPeserta(DEFAULT_PESERTA);
         setSesi(DEFAULT_SESI);
         setPresensi(DEFAULT_PRESENSI);
-        setTim(DEFAULT_TIM);
+        
+        if (activeUser) {
+          const existsInDefault = DEFAULT_TIM.some(t => t.username.toLowerCase() === activeUser.username.toLowerCase());
+          if (existsInDefault) {
+            setTim(DEFAULT_TIM);
+          } else {
+            setTim([...DEFAULT_TIM, activeUser]);
+          }
+        } else {
+          setTim(DEFAULT_TIM);
+        }
+
         setBranding(DEFAULT_BRANDING);
         setActiveSesiId(1);
         setSupabaseConnected(false);
         setSupabaseMode('none');
-        setCurrentUser(null);
+        
+        // Jangan hapus currentUser jika sedang login (untuk menjaga sesi login kab/kota tetap aktif)
+        if (!activeUser) {
+          setCurrentUser(null);
+        }
+
         resetSupabaseClient();
         triggerAlert(
           "Reset Berhasil", 
