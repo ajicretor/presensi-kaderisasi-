@@ -52,6 +52,60 @@ export function resetSupabaseClient() {
   cachedSupabaseClient = null;
 }
 
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64.split(',')[1]);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
+export async function uploadPhotoToSupabase(id: string, base64Data: string): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    if (!base64Data || !base64Data.startsWith('data:')) {
+      return base64Data;
+    }
+
+    const mimeMatch = base64Data.match(/^data:([^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const blob = base64ToBlob(base64Data, mimeType);
+
+    const bucketName = 'peserta_photos';
+    const cleanId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fileExt = mimeType.split('/')[1] || 'jpg';
+    const fileName = `${cleanId}.${fileExt}`;
+
+    try {
+      await client.storage.createBucket(bucketName, { public: true });
+    } catch (err) {
+      // ignore
+    }
+
+    const { error } = await client.storage
+      .from(bucketName)
+      .upload(fileName, blob, {
+        upsert: true,
+        contentType: mimeType
+      });
+
+    if (error) {
+      console.error("Error uploading photo to Supabase storage:", error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = client.storage.from(bucketName).getPublicUrl(fileName);
+    return publicUrl;
+  } catch (e) {
+    console.error("Exception in uploadPhotoToSupabase:", e);
+    return null;
+  }
+}
+
 // SQL Schema for User reference
 export const SUPABASE_SQL_SCHEMA = `-- COPY DAN JALANKAN DI SQL EDITOR SUPABASE ANDA:
 
@@ -318,16 +372,22 @@ async function safeSelect(client: SupabaseClient, table: string, currentKabKota?
         if (table === 'peserta') {
           q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,nama.ilike.*cibungbulang*`);
         } else if (table === 'sesi') {
-          q = q.or(`kab_kota.eq."${currentKabKota}",materi.ilike.*cibungbulang*,instruktur.ilike.*cibungbulang*`);
+          q = q.or(`kab_kota.eq."${currentKabKota}",kab_kota.is.null,kab_kota.eq."",materi.ilike.*cibungbulang*,instruktur.ilike.*cibungbulang*`);
         } else if (table === 'presensi') {
           q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,materi.ilike.*cibungbulang*`);
         } else if (table === 'rekap_kelulusan') {
           q = q.or(`kab_kota.eq."${currentKabKota}",utusan.ilike.*cibungbulang*,nama.ilike.*cibungbulang*`);
+        } else if (table === 'branding') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",kab_kota.is.null,kab_kota.eq.""`);
         } else {
           q = q.eq('kab_kota', currentKabKota);
         }
       } else {
-        q = q.eq('kab_kota', currentKabKota);
+        if (table === 'sesi' || table === 'branding') {
+          q = q.or(`kab_kota.eq."${currentKabKota}",kab_kota.is.null,kab_kota.eq.""`);
+        } else {
+          q = q.eq('kab_kota', currentKabKota);
+        }
       }
     }
     if (orderField) {
@@ -355,6 +415,16 @@ export async function syncPeserta(data: Peserta[], currentKabKota?: string, isSu
 
   try {
     if (data.length === 0) return true;
+
+    // Handle image uploads to Supabase Storage first to shorten paths
+    for (const p of data) {
+      if (p.foto && p.foto.startsWith('data:')) {
+        const uploadedUrl = await uploadPhotoToSupabase(p.id, p.foto);
+        if (uploadedUrl) {
+          p.foto = uploadedUrl;
+        }
+      }
+    }
 
     const { data: existing, error: fetchError } = await safeSelect(client, 'peserta', currentKabKota, isSuperAdmin);
     if (fetchError) {
@@ -878,17 +948,37 @@ export async function fetchAllFromSupabase(currentKabKota?: string, isSuperAdmin
     const rawSesi = resSesi.data || [];
     const presensi = resPresensi.data || [];
 
-    const sesi = rawSesi.map((s: any) => ({
-      num: s.num,
-      materi: s.materi || '',
-      instruktur: s.instruktur || '',
-      startTime: s.startTime || s.starttime || '08:00',
-      duration: s.duration !== undefined ? s.duration : 90,
-      maxLate: s.maxLate !== undefined ? s.maxLate : (s.maxlate !== undefined ? s.maxlate : 10),
-      toiletLimit: s.toiletLimit !== undefined ? s.toiletLimit : (s.toiletlimit !== undefined ? s.toiletlimit : 5),
-      active: s.active !== undefined ? s.active : false,
-      kab_kota: s.kab_kota || ''
-    }));
+    // Deduplicate sessions by num, prioritizing currentKabKota
+    const sesiMap = new Map<number, any>();
+    const sortedRawSesi = [...rawSesi].sort((a, b) => {
+      const aKab = a.kab_kota || '';
+      const bKab = b.kab_kota || '';
+      
+      if (!aKab && bKab) return -1;
+      if (aKab && !bKab) return 1;
+      
+      if (currentKabKota) {
+        if (aKab.toLowerCase() === currentKabKota.toLowerCase() && bKab.toLowerCase() !== currentKabKota.toLowerCase()) return 1;
+        if (bKab.toLowerCase() === currentKabKota.toLowerCase() && aKab.toLowerCase() !== currentKabKota.toLowerCase()) return -1;
+      }
+      return 0;
+    });
+
+    sortedRawSesi.forEach((s: any) => {
+      sesiMap.set(s.num, {
+        num: s.num,
+        materi: s.materi || '',
+        instruktur: s.instruktur || '',
+        startTime: s.startTime || s.starttime || '08:00',
+        duration: s.duration !== undefined ? s.duration : 90,
+        maxLate: s.maxLate !== undefined ? s.maxLate : (s.maxlate !== undefined ? s.maxlate : 10),
+        toiletLimit: s.toiletLimit !== undefined ? s.toiletLimit : (s.toiletlimit !== undefined ? s.toiletlimit : 5),
+        active: s.active !== undefined ? s.active : false,
+        kab_kota: s.kab_kota || ''
+      });
+    });
+
+    const sesi = Array.from(sesiMap.values());
     
     let tim = [];
     if (!resTim.error) {

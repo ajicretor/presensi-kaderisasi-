@@ -2,6 +2,44 @@ import React, { useState } from 'react';
 import { Users, UserPlus, Search, QrCode, Edit2, Trash2, X, Upload, ArrowUpDown, ArrowUp, ArrowDown, Settings } from 'lucide-react';
 import { Peserta, Branding } from '../types';
 
+const resizeImage = (base64Str: string, maxWidth = 160, maxHeight = 160): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+    img.src = base64Str;
+  });
+};
+
 interface PesertaTabProps {
   peserta: Peserta[];
   branding: Branding;
@@ -149,9 +187,11 @@ export default function PesertaTab({
     if (file) {
       setFileName(file.name);
       const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
+      reader.onload = async (uploadEvent) => {
         if (uploadEvent.target?.result) {
-          setFormFoto(uploadEvent.target.result as string);
+          const rawBase64 = uploadEvent.target.result as string;
+          const compressed = await resizeImage(rawBase64, 160, 160);
+          setFormFoto(compressed);
         }
       };
       reader.readAsDataURL(file);
