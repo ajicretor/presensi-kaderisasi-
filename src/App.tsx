@@ -1769,6 +1769,7 @@ export default function App() {
               onRetrySync={triggerSupabaseSync}
               isSyncing={isSyncing}
               isSuperAdmin={isSuperAdmin}
+              isAdmin={isAdmin}
             />
           )}
 

@@ -78,6 +78,7 @@ interface DashboardTabProps {
   supabaseMode: 'env' | 'custom' | 'none';
   onRetrySync?: () => void;
   isSyncing?: boolean;
+  isAdmin?: boolean;
   isSuperAdmin?: boolean;
 }
 
@@ -92,6 +93,7 @@ export default function DashboardTab({
   supabaseMode,
   onRetrySync,
   isSyncing = false,
+  isAdmin = false,
   isSuperAdmin = false
 }: DashboardTabProps) {
   // Stats calculations
@@ -234,7 +236,7 @@ export default function DashboardTab({
     <div className="space-y-6">
       
       {/* DB Connection Top Warning / Notification */}
-      {isSuperAdmin ? (
+      {isSuperAdmin || isAdmin ? (
         <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-navy-800 rounded-xl shadow-xs transition-colors duration-350 gap-4">
           <div className="flex items-center space-x-3 text-xs w-full md:w-auto">
             <div className={`p-2 rounded-lg ${supabaseConnected ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500' : 'bg-amber-50 dark:bg-amber-950/20 text-amber-500'}`}>
@@ -257,7 +259,7 @@ export default function DashboardTab({
                 {isSyncing
                   ? 'Sedang melakukan sinkronisasi data dengan server cloud Supabase...'
                   : supabaseConnected 
-                    ? `Sinkronisasi real-time berhasil menggunakan Supabase database (${supabaseMode === 'env' ? 'Environment Keys' : 'Kunci Kustom'})` 
+                    ? 'Online (Real-Time)' 
                     : 'Menggunakan memori local storage sekuriti tinggi. Coba hubungkan kembali dengan tombol di kanan!'
                 }
               </p>
